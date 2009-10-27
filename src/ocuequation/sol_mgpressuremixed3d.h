@@ -34,7 +34,7 @@ class Sol_MultigridPressureMixed3DDeviceD : public Sol_MultigridPressure3DBase {
 
   //***** OVERRIDES ****
   virtual void apply_boundary_conditions(int level);
-  virtual void relax(int level, int iterations);            
+  virtual void relax(int level, int iterations, RelaxOrder order);            
   virtual void restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf);
   virtual void prolong(int coarse_level, int fine_level);
   virtual void clear_zero(int level);

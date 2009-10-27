@@ -30,11 +30,12 @@ DECLARE_UNITTEST_DOUBLE_BEGIN(MultigridDoubleTest);
 
 void init_solver(Sol_MultigridPressure3DDeviceD &solver, Grid3DDeviceD &rhs,
                  BoundaryConditionSet bc, 
-                 int nx, int ny, int nz, float hx, float hy, float hz)
+                 int nx, int ny, int nz, float hx, float hy, float hz, bool sym)
 {
   solver.nu1 = 2;
   solver.nu2 = 2;
   solver.bc = bc;
+  solver.make_symmetric_operator = sym;
 
   UNITTEST_ASSERT_TRUE(solver.initialize_storage(nx,ny,nz,hx,hy,hz,&rhs));
 }
@@ -138,7 +139,7 @@ void set_bc(
   bc = BoundaryConditionSet(example);
 }
 
-void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, int axis, float value, double tol)
+void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, int axis, float value, double tol, bool sym)
 {
   BoundaryConditionSet bc;
   set_bc(bc, BC_PERIODIC, 0);
@@ -159,33 +160,31 @@ void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, in
     bc.zpos.value = bc.zneg.value = value;
   }
 
-  //Sol_MultigridPressure3DDeviceD solver;
   Sol_MultigridPressure3DDeviceD solver;
   Grid3DDeviceD rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, axis, false); // don't init to zero
-  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
-  UNITTEST_ASSERT_TRUE(solver.solve(residual,tol,15));
+  UNITTEST_ASSERT_TRUE(solver.solve(residual,tol,16));
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
 
 
 
 
-void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float hz, float value, double tol)
+void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float hz, float value, double tol, bool sym)
 {
   BoundaryConditionSet bc;
   set_bc(bc, BC_DIRICHELET, value);
   
-//  Sol_MultigridPressure3DDeviceD solver;
   Sol_MultigridPressure3DDeviceD solver;
   Grid3DDeviceD rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, true); // init to zero, no 
-  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
@@ -201,7 +200,7 @@ void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float h
   UNITTEST_ASSERT_EQUAL_DOUBLE(min_val, value, tol);
 }
 
-void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, double tol)
+void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, double tol, bool sym)
 {
   BoundaryConditionSet bc;
   set_bc(bc, BC_NEUMANN, 0);
@@ -210,7 +209,7 @@ void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, doub
   Grid3DDeviceD rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, false); // init to sin waves, no axis
-  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
@@ -219,7 +218,7 @@ void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, doub
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
 
-void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz, double tol)
+void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz, double tol, bool sym)
 {
   BoundaryConditionSet bc;
   set_bc(bc, BC_PERIODIC, 0);
@@ -228,53 +227,50 @@ void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz,
   Grid3DDeviceD rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, false); // init to sin waves, no axis
-  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, bc, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
+    CPUTimer timer;
+  timer.start();
   UNITTEST_ASSERT_TRUE(solver.solve(residual,tol, 15));
-
+  timer.stop();
+  printf("%f sec\n", timer.elapsed_sec());
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
 
-void run_all_bcs(int nx, int ny, int nz, float hx, float hy, float hz, float tol)
+void run_all_bcs(int nx, int ny, int nz, float hx, float hy, float hz, float tol, bool sym)
 {
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, -1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, -1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 0, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, .5, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 1, tol);
-  run_all_periodic_test(nx, ny, nz, hx, hy, hz, tol);
-  run_neumann_test(nx, ny, nz, hx, hy, hz, tol);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, -1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, -1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 0, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, .5, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 1, tol, sym);
+  run_all_periodic_test(nx, ny, nz, hx, hy, hz, tol, sym);
+  run_neumann_test(nx, ny, nz, hx, hy, hz, tol, sym);
 }
 
 void run()
 {
-  global_timer_clear_all();
+  run_all_bcs(256,256,256, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-8, false);
+  run_all_bcs(128, 128, 128, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-8, false);
+  run_all_bcs(128, 128, 128, 4.0 / 128, 5.0 / 128, 6.0 / 128, 1e-8, false);
+  run_all_bcs(128, 128, 128, 5.0 / 128, 4.0 / 128, 6.0 / 128, 1e-8, false);
+  run_all_bcs(128, 128, 128, 5.0 / 128, 6.0 / 128, 4.0 / 128, 1e-8, false);
+  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-8, false);
+  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-8, false);
+  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, false);
+  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, false);
 
-  CPUTimer timer;
-  timer.start();
-
-  // run lots of different combinations of bc's with isotropic grids, anistropic grids, and varying resolutions
-  run_all_bcs(256,256,256, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-8);
-  run_all_bcs(128, 128, 128, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-8);
-  run_all_bcs(128, 128, 128, 4.0 / 128, 5.0 / 128, 6.0 / 128, 1e-8);
-  run_all_bcs(128, 128, 128, 5.0 / 128, 4.0 / 128, 6.0 / 128, 1e-8);
-  run_all_bcs(128, 128, 128, 5.0 / 128, 6.0 / 128, 4.0 / 128, 1e-8);
-  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-8);
-  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-8);
-  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8);
-  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8);
-
-  timer.stop();
-  printf("Elapsed = %fms\n", timer.elapsed_ms());
-
-  global_timer_print();
+  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-8, true);
+  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-8, true);
+  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, true);
+  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, true);
 }
 
 

@@ -35,9 +35,15 @@ namespace ocu {
 class Sol_MultigridPressure3DBase : public Solver
 {
 protected:
+
+  enum RelaxOrder {
+    RO_RED_BLACK,
+    RO_BLACK_RED,
+    RO_SYMMETRIC
+  };
+
   //**** MEMBER VARIABLES ****
   int _num_levels;
-  bool _failure;
 
   double *_h;
   double _omega;
@@ -51,10 +57,6 @@ protected:
   int   nz(int level) const { return _dim[level].z; }
   
   double get_h(int level) const { return _h[level]; }
-
-  bool any_failures() const { return _failure; }
-  void clear_failures()     { _failure = false; }
-  void add_failure()        { _failure = true; }
 
   // translate between varying grid sizes vs uniform spacing with coefficients
   double hx(int level) const { return get_h(level)/sqrt(_fx); }
@@ -72,7 +74,7 @@ protected:
   //**** OVERRIDES ****
   virtual void clear_zero(int level) = 0;
   virtual void apply_boundary_conditions(int level) = 0;
-  virtual void relax(int level, int iterations) = 0;            
+  virtual void relax(int level, int iterations, RelaxOrder order) = 0;            
   virtual void restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf) = 0;
   virtual void prolong(int coarse_level, int fine_level) = 0;
   //virtual void residual_norm(int level, double &l2, double &linf) = 0;
@@ -84,9 +86,12 @@ public:
   int nu1;  // pre-smoothing steps
   int nu2;  // post-smoothing steps
   ConvergenceType convergence;
+  bool make_symmetric_operator; // make the application of smoothing in the vcycles a symmetric linear operator
 
   //**** PUBLIC INTERFACE ****
   bool solve(double &residual, double tolerance = 1e-6, int max_iter = 4);
+  bool run_vcycles(int count);
+  bool run_fmg(int count);
 
   Sol_MultigridPressure3DBase();
   ~Sol_MultigridPressure3DBase();
@@ -137,11 +142,11 @@ class Sol_MultigridPressure3DDevice : public Sol_MultigridPressure3DBase {
   bool unbind_tex_prolong();
 
   void do_cpu_solve(Grid3DHost<T> &h_u, Grid3DHost<T> &h_b, bool red_black, T h, T xpos_mod, T xneg_mod, T ypos_mod, T yneg_mod, T zpos_mod, T zneg_mod);
-  void relax_on_host(int level, int iterations);
+  void relax_on_host(int level, int iterations, RelaxOrder order);
 
   //***** OVERRIDES ****
   virtual void apply_boundary_conditions(int level);
-  virtual void relax(int level, int iterations);            
+  virtual void relax(int level, int iterations, RelaxOrder order); 
   virtual void restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf);
   virtual void prolong(int coarse_level, int fine_level);
   virtual void clear_zero(int level);

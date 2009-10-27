@@ -34,9 +34,8 @@ Sol_MultigridPressure3DBase::Sol_MultigridPressure3DBase()
   nu1 = 2;
   nu2 = 2;
 
-  _failure = false;
-
   convergence = CONVERGENCE_L2;
+  make_symmetric_operator = false;
 }
 
 Sol_MultigridPressure3DBase::~Sol_MultigridPressure3DBase()
@@ -114,28 +113,33 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
   CPUTimer timer;
   timer.start();
 
-  clear_failures();
+  clear_error();
 
   int level_ncyc;
   int level;
 
+  result_l2 = result_linf = 0;
+
   apply_boundary_conditions(0);
-  double orig_l2, orig_linf;
-  restrict_residuals(0,0, &orig_l2, &orig_linf);
+  double orig_l2=0, orig_linf=0;
+  restrict_residuals(0,0, 
+    (convergence & CONVERGENCE_CALC_L2) ? &orig_l2 : 0, 
+    (convergence & CONVERGENCE_CALC_LINF) ? &orig_linf : 0);
   //printf("Error Before: l2 = %f, linf = %f\n", orig_l2, orig_linf);
 
-  double orig_error = (convergence == CONVERGENCE_L2) ? orig_l2 : orig_linf;
+  double orig_error = (convergence & CONVERGENCE_CRITERIA_L2) ? orig_l2 : 
+                      (convergence & CONVERGENCE_CRITERIA_LINF) ? orig_linf : 1e20;
   if (orig_error < tolerance) {
-    result_l2 = orig_l2;
-    result_linf = orig_linf;
+    if (convergence & CONVERGENCE_CALC_L2)   result_l2 = orig_l2;
+    if (convergence & CONVERGENCE_CALC_LINF) result_linf = orig_linf;
     return true;
   }
 
 #if 0
   // for testing relaxation only, enable this code block
   double iter_l2, iter_linf;
-  for (int o=0; o < 100; o++) {
-    relax(0, 300);
+  for (int o=0; o < 10; o++) {
+    relax(0, 10, RO_SYMMETRIC);
     restrict_residuals(0, 1, &iter_l2, &iter_linf);
     printf("error: l2 = %.12f, linf = %.12f\n", iter_l2, iter_linf);
   }
@@ -178,14 +182,16 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
 
       // going down
       for (level = fine_level; level < coarse_level; level++) {
-        relax(level, nu1);
+        relax(level, nu1, RO_RED_BLACK);
 
         clear_zero(level+1);
         apply_boundary_conditions(level+1);
         if (level == 0) {
-          restrict_residuals(0, 1, &result_l2, &result_linf);
-          double residual = (convergence == CONVERGENCE_L2) ? result_l2 : result_linf;          
-
+          restrict_residuals(0, 1, 
+            (convergence & CONVERGENCE_CALC_L2) ? &result_l2 : 0, 
+            (convergence & CONVERGENCE_CALC_LINF) ? &result_linf : 0);
+          double residual = (convergence & CONVERGENCE_CRITERIA_L2) ? result_l2 : 
+                            (convergence & CONVERGENCE_CRITERIA_LINF) ? result_linf : 1e20;          
           //printf("%d: residual = %.12f,%.12f\n", i_cyc, result_linf, result_l2);
 
           // if we're below tolerance, or we're no longer converging, bail out
@@ -194,7 +200,7 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
             //printf("[ELAPSED] Sol_MultigridPressure3DBase::do_fmg - converged in %fms\n", timer.elapsed_ms());
             //printf("[INFO] Sol_MultigridPressure3DBase::do_fmg - error after: L2 = %f (%fx), Linf = %f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
             global_counter_add("vcycles", num_vcyc);
-            return !any_failures();
+            return !any_error();
           }
         }
         else
@@ -205,7 +211,7 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
       // (reference implementation uses nu1+nu2) - this is probably overkill, i need to revisit this
       // with a good heuristic.  Inhomogeneous conditions require more iterations.
       int coarse_iters = max3(nx(coarse_level)*ny(coarse_level), ny(coarse_level)*nz(coarse_level), nx(coarse_level)*nz(coarse_level))/2;      
-      relax(coarse_level, coarse_iters);
+      relax(coarse_level, coarse_iters, make_symmetric_operator ? RO_SYMMETRIC : RO_RED_BLACK);
       //relax(coarse_level, (nx(coarse_level)*ny(coarse_level)*nz(coarse_level))/2);
 
       // going up
@@ -213,7 +219,7 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
         prolong(level+1, level);
         // don't need to relax finest grid since it will get relaxed at the beginning of the next v-cycle
         if (level > 0) 
-          relax(level, nu2);
+          relax(level, nu2, make_symmetric_operator ? RO_BLACK_RED : RO_RED_BLACK);
       }
     }
 
@@ -225,7 +231,8 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
 
   timer.stop();
   //printf("[ELAPSED] Sol_MultigridPressure3DBase::do_fmg - stopped iterations after %fms\n", timer.elapsed_ms());
-  printf("[WARNING] Sol_MultigridPressure3DBase::do_fmg - Failed to converge, error after: L2 = %f (%fx), Linf = %f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
+  if (!(convergence & CONVERGENCE_CRITERIA_NONE))
+    printf("[WARNING] Sol_MultigridPressure3DBase::do_fmg - Failed to converge, error after: L2 = %.12f (%fx), Linf = %.12f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
 
   return false;
 }
@@ -233,33 +240,48 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
 bool
 Sol_MultigridPressure3DBase::do_vcycle(double tolerance, int max_iter, double &result_l2, double &result_linf)
 {
-  clear_failures();
+  clear_error();
 
   int level;
   int coarse_level = _num_levels-1;
 
   apply_boundary_conditions(0);
-  double orig_l2, orig_linf;
-  restrict_residuals(0,0, &orig_l2, &orig_linf);
+
+  double orig_l2=0, orig_linf=0;
+  restrict_residuals(0,0, 
+    (convergence & CONVERGENCE_CALC_L2) ? &orig_l2 : 0, 
+    (convergence & CONVERGENCE_CALC_LINF) ? &orig_linf : 0);
+  //printf("Error Before: l2 = %f, linf = %f\n", orig_l2, orig_linf);
+
+  double orig_error = (convergence & CONVERGENCE_CRITERIA_L2) ? orig_l2 : 
+                      (convergence & CONVERGENCE_CRITERIA_LINF) ? orig_linf : 1e20;
+  if (orig_error < tolerance) {
+    if (convergence & CONVERGENCE_CALC_L2)   result_l2 = orig_l2;
+    if (convergence & CONVERGENCE_CALC_LINF) result_linf = orig_linf;
+    return true;
+  }
 
   for (int i_cyc = 0; i_cyc < max_iter; i_cyc++) {
 
     // going down
     for (level = 0; level < coarse_level; level++) {
-      relax(level, nu1);
+      relax(level, nu1, RO_RED_BLACK);
 
       clear_zero(level+1);
       apply_boundary_conditions(level+1);
       if (level == 0) {
-        restrict_residuals(0, 1, &result_l2, &result_linf);
-        double residual = (convergence == CONVERGENCE_L2) ? result_l2 : result_linf;
+        restrict_residuals(0, 1, 
+          (convergence & CONVERGENCE_CALC_L2) ? &result_l2 : 0, 
+          (convergence & CONVERGENCE_CALC_LINF) ? &result_linf : 0);
+        double residual = (convergence & CONVERGENCE_CRITERIA_L2) ? result_l2 : 
+                          (convergence & CONVERGENCE_CRITERIA_LINF) ? result_linf : 1e20;      
 
         //printf("%d: residual = %.12f\n", i_cyc, result_linf);
 
         // if we're below tolerance, or we're no longer converging, bail out
         if (residual < tolerance) {
           //printf("[INFO] Sol_MultigridPressure3DBase::do_vcycle - error after: L2 = %f (%fx), Linf = %f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
-          return !any_failures();
+          return !any_error();
         }
       }
       else
@@ -270,7 +292,7 @@ Sol_MultigridPressure3DBase::do_vcycle(double tolerance, int max_iter, double &r
     // (reference implementation uses nu1+nu2) - this is probably overkill, i need to revisit this
     // with a good heuristic.  Inhomogeneous conditions require more iterations.
     int coarse_iters = max3(nx(coarse_level)*ny(coarse_level), ny(coarse_level)*nz(coarse_level), nx(coarse_level)*nz(coarse_level))/2;      
-    relax(coarse_level, coarse_iters);
+    relax(coarse_level, coarse_iters, make_symmetric_operator ? RO_SYMMETRIC : RO_RED_BLACK);
     //relax(coarse_level, (nx(coarse_level)*ny(coarse_level)*nz(coarse_level))/2);
 
     // going up
@@ -278,11 +300,12 @@ Sol_MultigridPressure3DBase::do_vcycle(double tolerance, int max_iter, double &r
       prolong(level+1, level);
       // don't need to relax finest grid since it will get relaxed at the beginning of the next v-cycle
       if (level > 0) 
-        relax(level, nu2);
+        relax(level, nu2, make_symmetric_operator ? RO_BLACK_RED : RO_RED_BLACK);
     }
   }
 
-  printf("[WARNING] Sol_MultigridPressure3DBase::do_vcycle - Failed to converge, error after: L2 = %f (%fx), Linf = %f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
+  if (!(convergence & CONVERGENCE_CRITERIA_NONE))
+    printf("[WARNING] Sol_MultigridPressure3DBase::do_vcycle - Failed to converge, error after: L2 = %f (%fx), Linf = %f (%fx)\n", result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
 
   return false;
 }
@@ -330,6 +353,33 @@ Sol_MultigridPressure3DBase::solve(double &residual, double tolerance, int max_i
   return true;
 }
 
+bool 
+Sol_MultigridPressure3DBase::run_vcycles(int count)
+{
+  if (count <= 0) {
+    printf("[WARNING] Sol_MultigridPressure3DDevice::run_vcycles - non-positive count %d\n", count);
+    return false;
+  }
+
+  double l2, linf;
+  do_vcycle(0, count, l2, linf);
+
+  return !any_error();
+}
+
+bool 
+Sol_MultigridPressure3DBase::run_fmg(int count)
+{
+  if (count < 0) {
+    printf("[WARNING] Sol_MultigridPressure3DDevice::run_fmg - negative count %d\n", count);
+    return false;
+  }
+
+  double l2, linf;
+  do_fmg(0, count, l2, linf);
+
+  return !any_error();
+}
 
 
 bool 

@@ -34,12 +34,12 @@ void Sol_MultigridPressureMixed3DDeviceD::apply_boundary_conditions(int level)
     _mg_f.apply_boundary_conditions(level);
 }
 
-void Sol_MultigridPressureMixed3DDeviceD::relax(int level, int iterations)
+void Sol_MultigridPressureMixed3DDeviceD::relax(int level, int iterations, RelaxOrder order)
 {
   if (_double_mode)
-    _mg_d.relax(level, iterations);
+    _mg_d.relax(level, iterations, order);
   else
-    _mg_f.relax(level, iterations);
+    _mg_f.relax(level, iterations, order);
 }
 
 void Sol_MultigridPressureMixed3DDeviceD::restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf)
@@ -80,7 +80,7 @@ bool Sol_MultigridPressureMixed3DDeviceD::do_fmg(double tolerance, int max_iter,
 {
   // do float first
   if (!_rhs_f.copy_all_data(_mg_d.get_b(0)))
-    add_failure();
+    add_error();
 
   _double_mode = false;
 

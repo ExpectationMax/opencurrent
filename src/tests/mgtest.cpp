@@ -26,7 +26,7 @@ DECLARE_UNITTEST_BEGIN(MultigridTest);
 
 void init_solver(Sol_MultigridPressure3DDeviceF &solver, Grid3DDeviceF &rhs,
                  BoundaryCondition xpos,BoundaryCondition xneg, BoundaryCondition ypos,BoundaryCondition yneg, BoundaryCondition zpos,BoundaryCondition zneg, 
-                 int nx, int ny, int nz, float hx, float hy, float hz)
+                 int nx, int ny, int nz, float hx, float hy, float hz, bool sym)
 {
   solver.nu1 = 2;
   solver.nu2 = 2;
@@ -37,6 +37,8 @@ void init_solver(Sol_MultigridPressure3DDeviceF &solver, Grid3DDeviceF &rhs,
   solver.bc.yneg = yneg;
   solver.bc.zpos = zpos;
   solver.bc.zneg = zneg;
+
+  solver.make_symmetric_operator = sym;
 
   UNITTEST_ASSERT_TRUE(solver.initialize_storage(nx,ny,nz,hx,hy,hz,&rhs));
 }
@@ -138,7 +140,7 @@ void set_bc(
   xpos.type = xneg.type = ypos.type = yneg.type = zpos.type = zneg.type = type;
 }
 
-void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, int axis, float value, float tol)
+void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, int axis, float value, float tol, bool sym)
 {
   BoundaryCondition xpos, xneg, ypos, yneg, zpos, zneg;
   set_bc(xpos, xneg, ypos, yneg, zpos, zneg, BC_PERIODIC, 0);
@@ -163,7 +165,7 @@ void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, in
   Grid3DDeviceF rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, axis, false); // don't init to zero
-  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
@@ -174,7 +176,7 @@ void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, in
 
 
 
-void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float hz, float value, float tol)
+void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float hz, float value, float tol, bool sym)
 {
   BoundaryCondition xpos, xneg, ypos, yneg, zpos, zneg;
   set_bc(xpos, xneg, ypos, yneg, zpos, zneg, BC_DIRICHELET, value);
@@ -183,7 +185,7 @@ void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float h
   Grid3DDeviceF rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, true); // init to zero, no 
-  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
@@ -198,7 +200,7 @@ void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float h
   UNITTEST_ASSERT_EQUAL_FLOAT(min_val, value, tol);
 }
 
-void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, float tol)
+void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, float tol, bool sym)
 {
   BoundaryCondition xpos, xneg, ypos, yneg, zpos, zneg;
   set_bc(xpos, xneg, ypos, yneg, zpos, zneg, BC_NEUMANN, 0);
@@ -207,7 +209,7 @@ void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, floa
   Grid3DDeviceF rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, false); // init to sin waves, no axis
-  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
@@ -216,7 +218,7 @@ void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, floa
   UNITTEST_ASSERT_EQUAL_FLOAT(residual, 0, tol);
 }
 
-void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz, float tol)
+void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz, float tol, bool sym)
 {
   BoundaryCondition xpos, xneg, ypos, yneg, zpos, zneg;
   set_bc(xpos, xneg, ypos, yneg, zpos, zneg, BC_PERIODIC, 0);
@@ -225,7 +227,7 @@ void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz,
   Grid3DDeviceF rhs;
 
   init_rhs(rhs, nx, ny, nz, hx, hy, hz, -1, false); // init to sin waves, no axis
-  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz);
+  init_solver(solver, rhs, xpos, xneg, ypos, yneg, zpos, zneg, nx, ny, nz, hx, hy, hz, sym);
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
@@ -234,33 +236,41 @@ void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz,
   UNITTEST_ASSERT_EQUAL_FLOAT(residual, 0, tol);
 }
 
-void run_all_bcs(int nx, int ny, int nz, float hx, float hy, float hz, float tol)
+void run_all_bcs(int nx, int ny, int nz, float hx, float hy, float hz, float tol, bool sym)
 {
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, 0, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, -1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, -1, tol);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 0, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, .5, tol);
-  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 1, tol);
-  run_all_periodic_test(nx, ny, nz, hx, hy, hz, tol);
-  run_neumann_test(nx, ny, nz, hx, hy, hz, tol);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, 0, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, -1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, -1, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 0, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, .5, tol, sym);
+  run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 1, tol, sym);
+  run_all_periodic_test(nx, ny, nz, hx, hy, hz, tol, sym);
+  run_neumann_test(nx, ny, nz, hx, hy, hz, tol, sym);
 }
 
 void run()
 {
   // run lots of different combinations of bc's with isotropic grids, anistropic grids, and varying resolutions
-  run_all_bcs(128, 128, 128, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-3f);
-  run_all_bcs(128, 128, 128, 4.0 / 128, 5.0 / 128, 6.0 / 128, 1e-3f);
-  run_all_bcs(128, 128, 128, 5.0 / 128, 4.0 / 128, 6.0 / 128, 1e-3f);
-  run_all_bcs(128, 128, 128, 5.0 / 128, 6.0 / 128, 4.0 / 128, 1e-3f);
-  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-2f);
-  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-2f);
-  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f);
-  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f); 
+  run_all_bcs(128, 128, 128, 4.0 / 128, 4.0 / 128, 4.0 / 128, 1e-3f, false);
+  run_all_bcs(128, 128, 128, 4.0 / 128, 5.0 / 128, 6.0 / 128, 1e-3f, false);
+  run_all_bcs(128, 128, 128, 5.0 / 128, 4.0 / 128, 6.0 / 128, 1e-3f, false);
+  run_all_bcs(128, 128, 128, 5.0 / 128, 6.0 / 128, 4.0 / 128, 1e-3f, false);
+  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-2f, false);
+  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-2f, false);
+  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f, false);
+  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f, false); 
+
+
+  // test the symmetric mg mode, for a variety of dimensions
+  run_all_bcs(64, 128, 128, 4.0 / 64, 4.0 / 128, 4.0 / 128, 1e-2f, true);
+  run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-2f, true);
+  run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f, true);
+  run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-2f, true); 
+
 }
 
 

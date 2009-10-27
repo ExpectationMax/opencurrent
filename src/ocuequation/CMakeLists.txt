@@ -54,6 +54,8 @@ CUDA_ADD_LIBRARY(ocuequation
   sol_divergence3ddev.cu
   sol_gradient3d.h
   sol_gradient3ddev.cu
+  sol_pcgpressure3d.h
+  sol_pcgpressure3d.cu
   ) 
 
 

@@ -38,6 +38,7 @@ CUDA_ADD_EXECUTABLE(utest
 	mgmixedtest.cpp
 	nstest.cpp
 	lockextest.cpp
+	pcgtest.cpp
 	rayleigh.cpp
 	rayleighnoslip.cpp
 	rayleightiming.cpp)
@@ -59,6 +60,7 @@ ADD_TEST(ProjectDoubleTest ${EXECUTABLE_OUTPUT_PATH}/utest ProjectDoubleTest)
 ADD_TEST(SamplingTest ${EXECUTABLE_OUTPUT_PATH}/utest SamplingTest)
 ADD_TEST(NSTest ${EXECUTABLE_OUTPUT_PATH}/utest NSTest)
 ADD_TEST(LockExTest ${EXECUTABLE_OUTPUT_PATH}/utest LockExTest LockExDoubleTest)
+ADD_TEST(PCGTest ${EXECUTABLE_OUTPUT_PATH}/utest PCGDoubleTest)
 
 
 TARGET_LINK_LIBRARIES(utest ocuequation ocustorage ocuutil ${NetCDF_LIBRARY})

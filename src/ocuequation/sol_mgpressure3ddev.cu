@@ -116,14 +116,14 @@ Sol_MultigridPressure3DDevice<T>::do_cpu_solve(
 
 template<typename T>
 void 
-Sol_MultigridPressure3DDevice<T>::relax_on_host(int level, int iterations)
+Sol_MultigridPressure3DDevice<T>::relax_on_host(int level, int iterations, RelaxOrder order)
 {
   // copy grid & rhs to host
   // then solve
 
   if (!get_host_u(level) || !get_host_b(level)) {
     printf("[ERROR] Sol_MultigridPressure3DDevice::relax_on_host - host buffers not allocated for level %d\n", level);
-    add_failure();
+    add_error();
     return;
   }
 
@@ -145,10 +145,23 @@ Sol_MultigridPressure3DDevice<T>::relax_on_host(int level, int iterations)
   wrapper.ToggleGPUTiming(false);
   wrapper.PreKernel();
 
+  // To make this symmetric, we must make iterations an even number, and it must be at least 4
+  if (order == RO_SYMMETRIC) {
+    if (iterations % 2 == 1) iterations++;
+    if (iterations < 4) iterations = 4;
+  }
+
   // solve here.
   for (int iters = 0; iters < iterations; iters++) {
     for (int red_black = 0; red_black < 2; red_black++) {      
-      do_cpu_solve(h_u, h_b, red_black, get_h(level), 
+
+      int color = red_black;
+
+      // swap red/black if requested, or in second half of symmetric run
+      if (order == RO_BLACK_RED || (order == RO_SYMMETRIC && iters >= iterations/2))
+        color = !red_black;
+
+      do_cpu_solve(h_u, h_b, color, get_h(level), 
             (T)bc_diag_mod(h_bc.xpos, _fx), (T)bc_diag_mod(h_bc.xneg, _fx), (T)bc_diag_mod(h_bc.ypos, _fy), 
             (T)bc_diag_mod(h_bc.yneg, _fy), (T)bc_diag_mod(h_bc.zpos, _fz), (T)bc_diag_mod(h_bc.zneg, _fz));
       
@@ -165,17 +178,29 @@ Sol_MultigridPressure3DDevice<T>::relax_on_host(int level, int iterations)
 
 template<typename T>
 void 
-Sol_MultigridPressure3DDevice<T>::relax(int level, int iterations)
+Sol_MultigridPressure3DDevice<T>::relax(int level, int iterations, RelaxOrder order)
 { 
   if (level == _num_levels-1) {
-    relax_on_host(level, iterations);
+    relax_on_host(level, iterations, order);
     return;
+  }
+
+  // To make this symmetric, we must make iterations an even number, and it must be at least 4
+  if (order == RO_SYMMETRIC) {
+    if (iterations % 2 == 1) iterations++;
+    if (iterations < 4) iterations = 4;
   }
 
   check_ok(bind_tex_relax(get_u(level), get_b(level)));
   for (int iters = 0; iters < iterations; iters++) {
-    for (int red_black = 0; red_black < 2; red_black++) {      
-      check_ok(invoke_kernel_relax(get_u(level), get_b(level), get_diag(level), red_black, get_h(level)));
+    for (int red_black = 0; red_black < 2; red_black++) {
+
+      int color = red_black;
+      // swap red/black if requested, or in second half of symmetric run
+      if (order == RO_BLACK_RED || (order == RO_SYMMETRIC && iters >= iterations/2))
+        color = !red_black;
+
+      check_ok(invoke_kernel_relax(get_u(level), get_b(level), get_diag(level), color, get_h(level)));
       //NB: if there are periodic bc's, we must put this in the inner loop, otherwise we can save some work & move it outside
       if (_has_any_periodic_bc)
         apply_boundary_conditions(level);
@@ -249,7 +274,7 @@ Sol_MultigridPressure3DDevice<T>::apply_boundary_conditions(int level)
   if (level == 0) {
     if (!invoke_kernel_enforce_bc(get_u(level), bc, hx(level), hy(level), hz(level))) {
       printf("[ERROR] Sol_MultigridPressure3DDevice::apply_boundary_conditions - failed at level %d \n", level);
-      add_failure();
+      add_error();
     }
   }
   else {
@@ -260,7 +285,7 @@ Sol_MultigridPressure3DDevice<T>::apply_boundary_conditions(int level)
 
     if (!invoke_kernel_enforce_bc(get_u(level), bc_zero, hx(level), hy(level), hz(level))) {
       printf("[ERROR] Sol_MultigridPressure3DDevice::apply_boundary_conditions - failed at level %d \n", level);
-      add_failure();
+      add_error();
     }
   }
 }
@@ -438,7 +463,7 @@ template void Sol_MultigridPressure3DDevice<float>::prolong(int coarse_level, in
 template void Sol_MultigridPressure3DDevice<float>::restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf);
 template void Sol_MultigridPressure3DDevice<float>::do_cpu_solve(Grid3DHost<float> &h_u, Grid3DHost<float> &h_b, bool red_black, float h, 
                                                              float xpos_mod, float xneg_mod, float ypos_mod, float yneg_mod, float zpos_mod, float zneg_mod);
-template void Sol_MultigridPressure3DDevice<float>::relax_on_host(int level, int iterations);
+template void Sol_MultigridPressure3DDevice<float>::relax_on_host(int level, int iterations, RelaxOrder order);
 template void Sol_MultigridPressure3DDevice<float>::clear_zero(int level);
 template bool Sol_MultigridPressure3DDevice<float>::invoke_kernel_enforce_bc(Grid3DDevice<float> &u_grid, BoundaryConditionSet &bc_val, double hx_val, double hy_val, double hz_val);
 
@@ -454,7 +479,7 @@ template void Sol_MultigridPressure3DDevice<double>::prolong(int coarse_level, i
 template void Sol_MultigridPressure3DDevice<double>::restrict_residuals(int fine_level, int coarse_level, double *l2, double *linf);
 template void Sol_MultigridPressure3DDevice<double>::do_cpu_solve(Grid3DHost<double> &h_u, Grid3DHost<double> &h_b, bool red_black, double h, 
                                                              double xpos_mod, double xneg_mod, double ypos_mod, double yneg_mod, double zpos_mod, double zneg_mod);
-template void Sol_MultigridPressure3DDevice<double>::relax_on_host(int level, int iterations);
+template void Sol_MultigridPressure3DDevice<double>::relax_on_host(int level, int iterations, RelaxOrder order);
 template void Sol_MultigridPressure3DDevice<double>::clear_zero(int level);
 template bool Sol_MultigridPressure3DDevice<double>::invoke_kernel_enforce_bc(Grid3DDevice<double> &u_grid, BoundaryConditionSet &bc_val, double hx_val, double hy_val, double hz_val);
 
