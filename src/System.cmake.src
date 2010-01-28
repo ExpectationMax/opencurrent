@@ -1,0 +1,93 @@
+#  Copyright 2008-2009 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License
+ 
+ 
+ 
+# 
+# Build instructions:
+# 1. Copy this file to System.cmake
+# 2. Edit as per your system configuration
+# 3. Execute CMake.  Out-of-source building is recommented, e.g.
+#    > mkdir linux64-gcc43
+#    > cd linux64-gcc43
+#    > cmake ../src
+# 4. Edit CMakeCache.txt file as desired.
+# 5. Build (on linux, execute 'make' from the CMake directory).
+#
+ 
+# Some of these variables will only be set if not set externally, which allows for multiple CMake directories 
+# to be based on the same System.cmake file, where the CMakeCache.txt files have different
+# settings for OCU_TARGET_SM or CUDA_BUILD_TYPE, for example.
+#
+# Variables specific to this library:
+#
+# OCU_TARGET_SM
+# 	One of sm_10, sm_11, sm_12, sm_13.  This is the target for nvcc compilation.
+# 	Based on how this is set, the following variables will be #def'd in the code:
+# 	OCU_ATOMICSUPPORT / OCU_NOATOMICSUPPORT - whether the device supports atomics
+#  	OCU_DOUBLESUPPORT / OCU_NODOUBLESUPPORT - whether the device supports double precision floating point
+#	OCU_SM10, OCU_SM11, OCU_SM12, OCU_SM13 - which sm is selected
+#
+# OCU_NETCDF4_SUPPORT_ENABLED
+# 	Whether the netcdf lib was compiled with NetCDF4 support or not.  
+# 	The library will compile either way, it will just not be able to use some of the
+# 	newer features found in NetCDF4 like file compression. 
+#
+# Variables from the FindCUDA module:
+#
+# CUDA_INSTALL_PREFIX
+# 	Root directory under which the CUDA installation can be found.
+#
+# Variables from the FindNetCDF module:
+#
+# NetCDF_INCLUDE_DIR 
+# 	Directory under which netcdf.h can be found.
+#
+# NetCDF_LIBRARY 
+# 	Pointer to the version of the NetCDF library to be linked.  On linux, for example,
+# 	this would normally be /usr/lib/libnetcdf.so
+#
+# Various other CUDA options may be set as desired.  See the comments at the top of 
+# FindCUDA.cmake for more information about FindCUDA.
+
+SET(OCU_TARGET_SM "sm_13" CACHE STRING "Target for device compilation")
+
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+
+#
+# Windows example - modify as appropriate
+#
+
+  SET(CUDA_INSTALL_PREFIX "C:/CUDA")
+  SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
+
+# Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths
+#  SET(NetCDF_INCLUDE_DIR "C:/Program Files/Microsoft Visual Studio 8/VC/include")
+#  SET(NetCDF_LIBRARY "C:/Program Files/Microsoft Visual Studio 8/VC/lib/netcdf.lib")
+
+else()
+
+#
+# Linux example - modify as appropriate
+#
+
+  SET(CUDA_INSTALL_PREFIX "/usr/local/cuda/")
+  SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
+
+# Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths
+#  SET(NetCDF_INCLUDE_DIR "/usr/local/include/")
+#  SET(NetCDF_LIBRARY "/usr/local/lib/libnetcdf.so")
+
+endif()
+
