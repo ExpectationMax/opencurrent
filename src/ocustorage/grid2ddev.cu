@@ -17,7 +17,10 @@
 #include "cuda.h"
 #include <cstdio>
 
+#include "ocuutil/kernel_wrapper.h"
+#include "ocuutil/thread.h"
 #include "ocustorage/grid2d.h"
+
 
 template<typename T>
 __global__ void Grid2DDevice_linear_combination1(T *result, T alpha1, const T *g1, int n)
@@ -62,12 +65,10 @@ namespace ocu {
 template<typename T>
 bool Grid2DDevice<T>::clear_zero()
 {
-  if ((unsigned int)CUDA_SUCCESS != cudaMemset(this->_buffer, 0, this->num_allocated_elements() * sizeof(T))) {
-    printf("[ERROR] Grid2DDeviceT::clear_zero - cudaMemset failed\n");
-    return false;
-  }
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemset(this->_buffer, 0, this->num_allocated_elements() * sizeof(T));
+  return wrapper.PostKernel("cudaMemset");
 }
 
 template<typename T>
@@ -76,14 +77,10 @@ bool Grid2DDevice<T>::clear(T val)
   dim3 Dg((this->num_allocated_elements()+255) / 256);
   dim3 Db(256);
   
-  Grid2DDevice_clear<<<Dg, Db>>>(this->_buffer, val, this->num_allocated_elements());
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid2DDeviceF::clear - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid2DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->_buffer, val, this->num_allocated_elements());
+  return wrapper.PostKernel("Grid2DDevice_clear");
 }
 
 
@@ -96,12 +93,10 @@ Grid2DDevice<T>::copy_all_data(const Grid2DHost<T> &from)
     return false;
   }
 
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice)) {
-    printf("[ERROR] Grid2DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice);
+  return wrapper.PostKernel("cudaMemcpy(HtoD)");
 }
 
 
@@ -115,12 +110,10 @@ Grid2DDevice<T>::copy_all_data(const Grid2DDevice<T> &from)
     return false;
   }
 
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice)) {
-    printf("[ERROR] Grid2DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
+  return wrapper.PostKernel("cudaMemcpy(DtoD)");
 }
 
 
@@ -136,14 +129,11 @@ bool Grid2DDevice<T>::linear_combination(T alpha1, const Grid2DDevice<T> &g1)
   dim3 Dg((this->num_allocated_elements()+255) / 256);
   dim3 Db(256);
   
-  Grid2DDevice_linear_combination1<<<Dg, Db>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid2DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid2DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
+  return wrapper.PostKernel("Grid2DDevice_linear_combination1");
+
 }
 
 template<typename T>
@@ -162,14 +152,10 @@ bool Grid2DDevice<T>::linear_combination(T alpha1, const Grid2DDevice<T> &g1, T 
   dim3 Dg((this->num_allocated_elements() + 255) / 256);
   dim3 Db(256);
   
-  Grid2DDevice_linear_combination2<<<Dg, Db>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid2DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid2DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
+  return wrapper.PostKernel("Grid2DDevice_linear_combination2");
 }
 
 

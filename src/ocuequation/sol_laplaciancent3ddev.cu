@@ -20,7 +20,7 @@
 #include "ocuutil/timer.h"
 #include "ocuutil/timing_pool.h"
 #include "ocuutil/float_routines.h"
-
+#include "ocuutil/thread.h"
 
 
 
@@ -102,7 +102,7 @@ bool Sol_LaplacianCentered3DDevice<T>::solve()
   
 
   PreKernel();
-  Sol_LaplacianCentered3DDevice_stencil<<<Dg, Db>>>(&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
+  Sol_LaplacianCentered3DDevice_stencil<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
     (T)(1/(_hx*_hx)), (T)(1/(_hy*_hy)), (T)(1/(_hz*_hz)), coefficient,
     phi->xstride(), phi->ystride(), 
     _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY);

@@ -17,9 +17,12 @@
 #ifndef __OCU_STORAGE_GRID3D_H__
 #define __OCU_STORAGE_GRID3D_H__
 
+#include <vector>
+
 #include "ocuutil/defines.h"
 #include "ocuutil/direction.h"
-#include <vector>
+#include "ocuutil/thread.h"
+#include "ocustorage/region3d.h"
 
 namespace ocu {
 
@@ -93,7 +96,6 @@ public:
   static void pad_for_congruence(std::vector<Grid3DDimension> &grids);
 };
 
-template<typename T>
 class Grid3DBase : public Grid3DUntyped
 {
   // disallow
@@ -103,24 +105,45 @@ class Grid3DBase : public Grid3DUntyped
 protected:
 
   //**** MEMBER VARIABLES ****
-  T *_buffer;
-  T *_shifted_buffer;
+  void *_buffer;
+  void *_shifted_buffer;
+  size_t _atom_size;
+  int _image_id;
 
   //**** MANAGERS ****
   ~Grid3DBase() { }
-  Grid3DBase() { 
-    _buffer = 0; 
-    _shifted_buffer = 0; 
-  }
+  Grid3DBase(size_t atom_size_val) : _atom_size(atom_size_val) { _buffer = 0; _shifted_buffer = 0; _image_id = ThreadManager::this_image(); }
 
 public:
 
   //**** PUBLIC INTERFACE ****
-  OCU_HOSTDEVICE T       &at       (int i, int j, int k)         { return *(_shifted_buffer + i * _pnzpny + j * _pnz + k); }
-  OCU_HOSTDEVICE const T &at       (int i, int j, int k)  const  { return *(_shifted_buffer + i * _pnzpny + j * _pnz + k); }
+  OCU_HOSTDEVICE size_t       atom_size() const { return _atom_size; }
+  OCU_HOSTDEVICE void *       ptr_untyped(int i, int j, int k)         { return ((      char *)_shifted_buffer) + _atom_size * (i * _pnzpny + j * _pnz + k); }  
+  OCU_HOSTDEVICE const void * ptr_untyped(int i, int j, int k)  const  { return ((const char *)_shifted_buffer) + _atom_size * (i * _pnzpny + j * _pnz + k); }  
+
+};
+
+template<typename T>
+class Grid3DTypedBase : public Grid3DBase
+{
+  // disallow
+  Grid3DTypedBase<T> &operator=(const Grid3DTypedBase<T> &) { return *this; }
+  Grid3DTypedBase<T>(const Grid3DTypedBase<T> &) : Grid3DBase(0) { }
+
+protected:
+
+  //**** MANAGERS ****
+  ~Grid3DTypedBase() { }
+  Grid3DTypedBase() : Grid3DBase(sizeof(T)) { }
+
+public:
+
+  //**** PUBLIC INTERFACE ****
+  OCU_HOSTDEVICE T       &at       (int i, int j, int k)         { return *((     (T *)_shifted_buffer) + i * _pnzpny + j * _pnz + k); }
+  OCU_HOSTDEVICE const T &at       (int i, int j, int k)  const  { return *(((const T*)_shifted_buffer) + i * _pnzpny + j * _pnz + k); }
   
-  OCU_HOSTDEVICE const T *buffer() const { return _buffer; }
-  OCU_HOSTDEVICE       T *buffer()       { return _buffer; }
+  OCU_HOSTDEVICE const T *buffer() const { return (const T*)_buffer; }
+  OCU_HOSTDEVICE       T *buffer()       { return (T *)_buffer; }
 };
 
 
@@ -132,7 +155,7 @@ class Grid3DDevice;
 
 
 template <typename T>
-class Grid3DHost : public Grid3DBase<T>
+class Grid3DHost : public Grid3DTypedBase<T>
 {
   //! Whether allocated host memory is pinned or not.  Pinned memory can be transfered to the device faster, but it cannot be swapped by the OS
   //! and hence reduces the amount of usable virtual memory in the system.
@@ -179,12 +202,21 @@ public:
   bool reduce_sum(T &result) const;
   bool reduce_sqrsum(T &result) const;
   bool reduce_checknan(T &result) const; // if any nans found, returns nan, otherwise returns non-nan
+
+  ConstRegion3DX region(void)                 const { return ConstRegion3DX(-this->gx(),this->nx()-1+this->gx(), -this->gy(),this->ny()-1+this->gy(),-this->gz(),this->nz()-1+this->gz(), this, MEM_HOST, this->_image_id); }
+  ConstRegion3DX region(int xval)             const { return ConstRegion3DX(xval,xval, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(), this, MEM_HOST, this->_image_id); }
+  ConstRegion3DX region(int xval0, int xval1) const { return ConstRegion3DX(xval0,xval1, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(),this, MEM_HOST, this->_image_id); }
+
+  Region3DX      region(void)                       { return Region3DX(-this->gx(),this->nx()-1+this->gx(), -this->gy(),this->ny()-1+this->gy(),-this->gz(),this->nz()-1+this->gz(), this, MEM_HOST, this->_image_id); }
+  Region3DX      region(int xval)                   { return Region3DX(xval,xval, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(), this, MEM_HOST, this->_image_id); }
+  Region3DX      region(int xval0, int xval1)       { return Region3DX(xval0,xval1, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(),this, MEM_HOST, this->_image_id); }
+
 };
 
 
 
 template <typename T>
-class Grid3DDevice : public Grid3DBase<T>
+class Grid3DDevice : public Grid3DTypedBase<T>
 {
 public:
 
@@ -220,7 +252,74 @@ public:
   OCU_HOST bool reduce_max(T &result) const;
   OCU_HOST bool reduce_min(T &result) const;
   OCU_HOST bool reduce_checknan(T &result) const; // if any nans found, returns nan, otherwise returns non-nan
+
+  ConstRegion3DX region(void)                 const { return ConstRegion3DX(-this->gx(),this->nx()-1+this->gx(), -this->gy(),this->ny()-1+this->gy(),-this->gz(),this->nz()-1+this->gz(), this, MEM_DEVICE, this->_image_id); }
+  ConstRegion3DX region(int xval)             const { return ConstRegion3DX(xval,xval, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(), this, MEM_DEVICE, this->_image_id); }
+  ConstRegion3DX region(int xval0, int xval1) const { return ConstRegion3DX(xval0,xval1, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(),this, MEM_DEVICE, this->_image_id); }
+
+  Region3DX      region(void)                       { return Region3DX(-this->gx(),this->nx()-1+this->gx(), -this->gy(),this->ny()-1+this->gy(),-this->gz(),this->nz()-1+this->gz(), this, MEM_DEVICE, this->_image_id); }
+  Region3DX      region(int xval)                   { return Region3DX(xval,xval, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(), this, MEM_DEVICE, this->_image_id); }
+  Region3DX      region(int xval0, int xval1)       { return Region3DX(xval0,xval1, -this->gy(),this->ny()-1+this->gy(), -this->gz(),this->nz()-1+this->gz(),this, MEM_DEVICE, this->_image_id); }
+
 };
+
+class CoArrayTable;
+
+template<typename T>
+class Grid3DDeviceCo : public Grid3DDevice<T>
+{
+  CoArrayTable *_table; // directory to siblings
+
+public:
+  Grid3DDeviceCo(const char *id);
+  ~Grid3DDeviceCo();
+
+  bool init(int nx_val, int ny_val, int nz_val, int gx_val, int gy_val, int gz_val, int padx=0, int pady=0, int padz=0) {
+    bool ok = Grid3DDevice<T>::init(nx_val, ny_val, nz_val, gx_val, gy_val, gz_val, padx, pady, padz);
+    ThreadManager::barrier();
+    return ok;
+  }
+
+        Grid3DDeviceCo<T> *co(int image);      
+  const Grid3DDeviceCo<T> *co(int image) const;
+
+  // reduce over all images
+  bool co_reduce_maxabs(T &result) const;
+  bool co_reduce_sum(T &result) const;
+  bool co_reduce_sqrsum(T &result) const;
+  bool co_reduce_max(T &result) const;
+  bool co_reduce_min(T &result) const;
+  bool co_reduce_checknan(T &result) const; // if any nans found, returns nan, otherwise returns non-nan
+};
+
+
+template<typename T>
+class Grid3DHostCo : public Grid3DHost<T>
+{
+  CoArrayTable *_table; // directory to siblings
+
+public:
+  Grid3DHostCo(const char *id);
+  ~Grid3DHostCo();
+
+  bool init(int nx_val, int ny_val, int nz_val, int gx_val, int gy_val, int gz_val, bool pinned = true, int padx=0, int pady=0, int padz=0) {
+    bool ok = Grid3DHost<T>::init(nx_val, ny_val, nz_val, gx_val, gy_val, gz_val, pinned, padx, pady, padz);
+    ThreadManager::barrier();
+    return ok;
+  }
+
+        Grid3DHostCo<T> *co(int image);      
+  const Grid3DHostCo<T> *co(int image) const;
+
+  // reduce over all images
+  bool co_reduce_maxabs(T &result) const;
+  bool co_reduce_sum(T &result) const;
+  bool co_reduce_sqrsum(T &result) const;
+  bool co_reduce_max(T &result) const;
+  bool co_reduce_min(T &result) const;
+  bool co_reduce_checknan(T &result) const; 
+};
+
 
 typedef Grid3DHost<float> Grid3DHostF;
 typedef Grid3DHost<double> Grid3DHostD;
@@ -230,7 +329,13 @@ typedef Grid3DDevice<float> Grid3DDeviceF;
 typedef Grid3DDevice<double> Grid3DDeviceD;
 typedef Grid3DDevice<int> Grid3DDeviceI;
 
+typedef Grid3DDeviceCo<float> Grid3DDeviceCoF;
+typedef Grid3DDeviceCo<double> Grid3DDeviceCoD;
+typedef Grid3DDeviceCo<int> Grid3DDeviceCoI;
 
+typedef Grid3DHostCo<float> Grid3DHostCoF;
+typedef Grid3DHostCo<double> Grid3DHostCoD;
+typedef Grid3DHostCo<int> Grid3DHostCoI;
 
 
 } // end namespace

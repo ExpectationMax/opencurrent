@@ -14,6 +14,7 @@
  *  limitations under the License.
  */
 
+#include "ocuutil/thread.h"
 #include "ocuutil/float_routines.h"
 #include "ocustorage/grid3dops.h"
 #include "ocuequation/sol_gradient3d.h"
@@ -78,7 +79,7 @@ Sol_Gradient3DDevice<T>::solve()
 
   PreKernel();
 
-  Sol_Gradient3DDevice_subtract_grad<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0), &phi->at(0,0,0), coefficient,
+  Sol_Gradient3DDevice_subtract_grad<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0), &phi->at(0,0,0), coefficient,
     (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), 
     phi->xstride(), phi->ystride(), 
     phi->nx(), phi->ny(), phi->nz(), blocksInY, 1.0f / (float)blocksInY);

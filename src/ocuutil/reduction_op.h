@@ -110,63 +110,71 @@ struct ReduceDevCheckNan {
 
 } // end namespace
 
-#else // not __CUDACC__
+#endif // __CUDACC__
 
 #include <cmath>
 #include <algorithm>
 
 namespace ocu {
 
-struct ReduceMaxAbsF
+struct HostReduceMaxAbsF
 {
-  float operator()(float a, float b) const { return std::max(fabsf(a), b); }
+  float process(float a) const { return fabsf(a); }
+  float operator()(float a, float b) const { return std::max(a, b); }
 };
 
-struct ReduceMaxAbsD
+struct HostReduceMaxAbsD
 {
-  double operator()(double a, double b) const { return std::max(fabs(a), b); }
+  double process(double a) const { return fabs(a); }
+  double operator()(double a, double b) const { return std::max(a, b); }
 };
 
-struct ReduceMaxAbsI
+struct HostReduceMaxAbsI
 {
-  int operator()(int a, int b) const { return std::max(abs(a), b); }
+  int process(int a) const { return abs(a); }
+  int operator()(int a, int b) const { return std::max(a, b); }
 };
 
 template<typename T>
-struct ReduceMax
+struct HostReduceMax
 {
+  T process(T a) const { return a; }
   T operator()(T a, T b) const { return std::max(a, b); }
 };
 
 template<typename T>
-struct ReduceMin
+struct HostReduceMin
 {
+  T process(T a) const { return a; }
   T operator()(T a, T b) const { return std::min(a, b); }
 };
 
 
 template<typename T>
-struct ReduceSum
+struct HostReduceSum
 {
+  T process(T a) const { return a; }
   T operator()(T a, T b) const { return a+b; }
 };
 
 template<typename T>
-struct ReduceSqrSum
+struct HostReduceSqrSum
 {
-  T operator()(T a, T b) const { return (a*a)+b; }
+  T process(T a) const { return a*a; }
+  T operator()(T a, T b) const { return a+b; }
 };
 
 template<typename T>
-struct ReduceCheckNan
+struct HostReduceCheckNan
 {
+  T process(T a) const { return a; }
   T operator()(T a, T b) const { return check_float(a) ? b : a; }
 };
 
 
 } // end namespace
 
-#endif // __CUDACC__
+
 
 
 #endif

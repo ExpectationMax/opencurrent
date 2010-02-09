@@ -63,6 +63,39 @@ public:
 };
 
 
+class Eqn_Diffusion1DCoF : public Equation {
+
+  //**** MEMBER VARIABLES ****
+  Sol_LaplacianCentered1DDeviceNew _diffusion_solver;
+  Grid1DDeviceCoF _density;
+
+  int _left_handle;
+  int _right_handle;
+
+public:
+
+  BoundaryCondition left, right;
+
+  //**** MANAGERS ****
+  Eqn_Diffusion1DCoF(const char *id) :
+    _density((std::string(id) + std::string(".density")).c_str())
+    { _left_handle = -1; _right_handle = -1; }
+  ~Eqn_Diffusion1DCoF();
+
+  //**** OVERRIDES ****
+  double get_max_stable_timestep() const;
+  bool advance_one_step(double dt);
+
+  //**** PUBLIC INTERFACE ****
+  bool set_parameters(const Eqn_Diffusion1DParams &params);
+
+  int                nx()                    const { return _diffusion_solver.nx(); }
+  double             diffusion_coefficient() const { return _diffusion_solver.coefficient(); }
+  double             h()                     const { return _diffusion_solver.h(); }
+  Grid1DDeviceF     &density()                     { return _density; }              
+  const Grid1DDeviceF &density()             const { return _density; }              
+};
+
 
 
 

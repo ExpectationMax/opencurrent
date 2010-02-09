@@ -83,7 +83,7 @@ bool reduce_with_operator(const ocu::Grid1DDevice<T> &grid, T &result, REDUCE re
   T *temp_temp;
 
   unsigned int smemsize  = ctasize * sizeof(T);
-  reduce_per_cta<<<numblocks, ctasize, smemsize>>>(&grid.at(0), grid.gx(), num_elems, temp_to, suppress_process ? false : true, reduce);
+  reduce_per_cta<<<numblocks, ctasize, smemsize, ThreadManager::get_compute_stream()>>>(&grid.at(0), grid.gx(), num_elems, temp_to, suppress_process ? false : true, reduce);
 
 
   while (numblocks > 1) {
@@ -92,7 +92,7 @@ bool reduce_with_operator(const ocu::Grid1DDevice<T> &grid, T &result, REDUCE re
 
     num_elems = numblocks;
     numblocks = (num_elems + ctasize - 1) / ctasize;
-    reduce_per_cta<<<numblocks, ctasize, smemsize>>>(temp_from, 0, num_elems, temp_to, false, reduce);
+    reduce_per_cta<<<numblocks, ctasize, smemsize, ThreadManager::get_compute_stream()>>>(temp_from, 0, num_elems, temp_to, false, reduce);
     
     cudaError_t er = cudaGetLastError();
     if (er != (unsigned int)CUDA_SUCCESS) {

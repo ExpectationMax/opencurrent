@@ -17,20 +17,26 @@
 #include "cuda.h"
 #include <cstdio>
 #include "ocuutil/memory.h"
-
+#include "ocuutil/thread.h"
 
 
 namespace ocu {
 
 
-void *host_malloc(size_t bytes, bool pinned)
+void *host_malloc(size_t bytes, bool pinned, bool write_combined)
 {
-  if (!pinned)
+  if (!pinned && !write_combined) {
     return malloc(bytes);
+  }
   else {
     void *result;
-    
-    if (cudaMallocHost(&result, bytes) != (unsigned int)CUDA_SUCCESS) {
+
+    // always allocate portable pinned, not just pinned
+    unsigned int flag = cudaHostAllocPortable;
+    if (write_combined)
+      flag |= cudaHostAllocWriteCombined;
+
+    if (cudaHostAlloc(&result, bytes, flag) != cudaSuccess) {
       printf("[ERROR] host_malloc - failed with cudaError \"%s\"\n", cudaGetErrorString(cudaGetLastError()));
       return 0;
     }
@@ -42,10 +48,13 @@ void *host_malloc(size_t bytes, bool pinned)
 
 void host_free(void *ptr, bool pinned)
 {
-  if (!pinned)
+  if (!pinned) {
     free(ptr);
+  }
   else {
-    cudaFreeHost(ptr);
+    if (cudaFreeHost(ptr) != cudaSuccess) {
+      printf("[ERROR] host_free - failed on %p with cudaError \"%s\"\n", ptr, cudaGetErrorString(cudaGetLastError()));
+    }
   }
 }
 

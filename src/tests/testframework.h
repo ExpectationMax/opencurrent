@@ -26,14 +26,15 @@ class UnitTestFailedException {
 };
 
 class UnitTest {
+protected:
+
   std::string _name;
   bool        _forge_ahead;
   bool        _failed;
   ocu::CPUTimer _timer;
+  bool        _multi;
 
-protected:
-
-  UnitTest(const char *name);
+  UnitTest(const char *name, bool multigpu);
 
   void assert_equal_double(double, double, double tol, const char *filename, int lineno);
   void assert_equal_float(float, float, float tol, const char *filename, int lineno);
@@ -50,14 +51,18 @@ protected:
 
 public:
 
+  bool is_multi() const { return _multi; }
   bool failed() const { return _failed; }
   const char *name() const { return _name.c_str(); }
 
   void start_test() {
     _timer.start();
+    // need to forge ahead so that all threads will participate in all barriers.
+    if (is_multi()) set_forge_ahead(true);
     run();
   }
 };
+
 
 #define UNITTEST_ASSERT_EQUAL_DOUBLE(a,b,t) this->assert_equal_double((a),(b),(t),__FILE__, __LINE__)
 #define UNITTEST_ASSERT_EQUAL_FLOAT(a,b,t)  this->assert_equal_float((a),(b),(t),__FILE__, __LINE__)
@@ -65,12 +70,11 @@ public:
 #define UNITTEST_ASSERT_FINITE(a)           this->assert_finite((a),__FILE__, __LINE__)
 #define UNITTEST_ASSERT_TRUE(a)             this->assert_true((a),__FILE__, __LINE__)
 
-
 #define DECLARE_UNITTEST_BEGIN(TEST) \
   template<typename DUMMY_TYPE> \
   class TEST : public UnitTest { \
   public: \
-   TEST() : UnitTest(#TEST) { } \
+   TEST() : UnitTest(#TEST, false) { } \
    int dummy_so_semi_colon_will_be_parsed
 
 
@@ -78,7 +82,7 @@ public:
   template<typename DUMMY_TYPE> \
   class TEST : public UnitTest { \
   public: \
-   TEST() : UnitTest(#TEST) { } \
+   TEST() : UnitTest(#TEST, false) { } \
    int dummy_so_semi_colon_will_be_parsed
 
 
@@ -96,15 +100,42 @@ public:
   int TEST##_instance
 #endif
 
+// Multi GPU tests
+
+#define DECLARE_UNITTEST_MULTIGPU_BEGIN(TEST) \
+  template<typename DUMMY_TYPE> \
+  class TEST : public UnitTest { \
+  public: \
+   TEST() : UnitTest(#TEST, true) { } \
+   int dummy_so_semi_colon_will_be_parsed
+
+
+#define DECLARE_UNITTEST_MULTIGPU_DOUBLE_BEGIN(TEST) \
+  template<typename DUMMY_TYPE> \
+  class TEST : public UnitTest { \
+  public: \
+   TEST() : UnitTest(#TEST, true) { } \
+   int dummy_so_semi_colon_will_be_parsed
+
+
+
+
 class UnitTestDriver {
   std::vector<UnitTest *> _test_list;
+  bool _multi_mode;
 
   bool run_tests(const std::vector<UnitTest *> &tests);
 
 public:
 
+  UnitTestDriver() : _multi_mode(false) {}
+
+  void set_multi(bool m) { _multi_mode = m; }
+
   void register_test(UnitTest *);
+
   bool run_all_tests();
+  bool run_single_gpu_tests();
   bool run_tests(const std::vector<std::string> &tests);
   void print_tests();
 

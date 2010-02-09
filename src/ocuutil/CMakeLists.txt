@@ -32,6 +32,8 @@ CUDA_ADD_LIBRARY(ocuutil
   direction.h
   kernel_wrapper.h
   kernel_wrapper.cu
+  thread.h
+  thread.cu
 ) 
 
 

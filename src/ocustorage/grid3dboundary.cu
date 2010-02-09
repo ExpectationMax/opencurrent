@@ -18,7 +18,7 @@
 #include <algorithm>
 #include "ocustorage/grid3dboundary.h"
 #include "ocuutil/kernel_wrapper.h"
-
+#include "ocuutil/thread.h"
 
 //! Launch enough threads to have threads of dimension (max(nx,ny), max(ny,nz))
 //! This does *not* fill in corner element, but that's ok since our finite difference
@@ -45,7 +45,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.zneg.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + j * ystride + -1] =  -phi[i * xstride + j * ystride + 0] + 2.0 * (T)bc.zneg.value;
       }
-      else { // (bc.zneg.type == ocu::BC_NEUMANN)
+      else if (bc.zneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + -1] = phi[i * xstride + j * ystride + 0] - hz * (T)bc.zneg.value;
       }
 
@@ -56,7 +56,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.zpos.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + j * ystride + nz] =  -phi[i * xstride + j * ystride + (nz-1)] + 2.0 * (T)bc.zpos.value;
       }
-      else { // (bc.zpos.type == ocu::BC_NEUMANN)
+      else if (bc.zpos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + nz] =  phi[i * xstride + j * ystride + (nz-1)] + hz * (T)bc.zpos.value;
       }
   }
@@ -72,7 +72,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.yneg.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + -1 * ystride + k] =  -phi[i * xstride + 0 * ystride + k] + 2.0 * (T)bc.yneg.value;
       }
-      else { // (bc.yneg.type == ocu::BC_NEUMANN)
+      else if (bc.yneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + -1 * ystride + k] = phi[i * xstride + 0 * ystride + k] - hy * (T)bc.yneg.value;
       }
 
@@ -83,7 +83,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.ypos.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + ny * ystride + k] =  -phi[i * xstride + (ny-1) * ystride + k] + 2.0 * (T)bc.ypos.value;
       }
-      else { // (bc.ypos.type == ocu::BC_NEUMANN)
+      else if (bc.ypos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + ny * ystride + k] =  phi[i * xstride + (ny-1) * ystride + k] + hy * (T)bc.ypos.value;
       }
 
@@ -100,7 +100,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.xneg.type == ocu::BC_DIRICHELET) {
         phi[-1 * xstride + j * ystride + k] =  -phi[0 * xstride + j * ystride + k] + 2.0 * (T)bc.xneg.value;
       }
-      else { // (bc.xneg.type == ocu::BC_NEUMANN)
+      else if (bc.xneg.type == ocu::BC_NEUMANN) {
         phi[-1 * xstride + j * ystride + k] = phi[0 * xstride + j * ystride + k] - hx * (T)bc.xneg.value;
       }
 
@@ -111,7 +111,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.xpos.type == ocu::BC_DIRICHELET) {
         phi[nx * xstride + j * ystride + k] =  -phi[(nx-1) * xstride + j * ystride + k] + 2.0 * (T)bc.xpos.value;
       }
-      else { // (bc.xpos.type == ocu::BC_NEUMANN)
+      else if (bc.xpos.type == ocu::BC_NEUMANN) {
         phi[nx * xstride + j * ystride + k] =  phi[(nx-1) * xstride  + j * ystride + k] + hx * (T)bc.xpos.value;
       }
   }
@@ -142,7 +142,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         // not sure what the right answer is for this:
         phi[i * xstride + j * ystride + -2] =  -phi[i * xstride + j * ystride + 0] + 2 * bc.zneg.value;
       }
-      else { // (bc.zneg.type == ocu::BC_NEUMANN)
+      else if (bc.zneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + -1] = phi[i * xstride + j * ystride + 0] - hz * bc.zneg.value;
         phi[i * xstride + j * ystride + -2] = phi[i * xstride + j * ystride + 0] - 2 * hz * bc.zneg.value;
       }
@@ -156,7 +156,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         phi[i * xstride + j * ystride + nz  ] =  -phi[i * xstride + j * ystride + (nz-1)] + 2 * bc.zpos.value;
         phi[i * xstride + j * ystride + nz+1] =  -phi[i * xstride + j * ystride + (nz-1)] + 2 * bc.zpos.value;
       }
-      else { // (bc.zpos.type == ocu::BC_NEUMANN)
+      else if (bc.zpos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + nz  ] =  phi[i * xstride + j * ystride + (nz-1)] + hz * bc.zpos.value;
         phi[i * xstride + j * ystride + nz+1] =  phi[i * xstride + j * ystride + (nz-1)] + 2 * hz * bc.zpos.value;
       }
@@ -175,7 +175,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         phi[i * xstride + -1 * ystride + k] =  -phi[i * xstride + 0 * ystride + k] + 2 * bc.yneg.value;
         phi[i * xstride + -2 * ystride + k] =  -phi[i * xstride + 0 * ystride + k] + 2 * bc.yneg.value;
       }
-      else { // (bc.yneg.type == ocu::BC_NEUMANN)
+      else if (bc.yneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + -1 * ystride + k] = phi[i * xstride + 0 * ystride + k] - hy * bc.yneg.value;
         phi[i * xstride + -2 * ystride + k] = phi[i * xstride + 0 * ystride + k] - 2 * hy * bc.yneg.value;
       }
@@ -189,7 +189,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         phi[i * xstride + (ny  ) * ystride + k] =  -phi[i * xstride + (ny-1) * ystride + k] + 2 * bc.ypos.value;
         phi[i * xstride + (ny+1) * ystride + k] =  -phi[i * xstride + (ny-1) * ystride + k] + 2 * bc.ypos.value;
       }
-      else { // (bc.ypos.type == ocu::BC_NEUMANN)
+      else if (bc.ypos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + (ny  ) * ystride + k] =  phi[i * xstride + (ny-1) * ystride + k] + hy * bc.ypos.value;
         phi[i * xstride + (ny+1) * ystride + k] =  phi[i * xstride + (ny-1) * ystride + k] + 2 * hy * bc.ypos.value;
       }
@@ -209,7 +209,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         phi[-1 * xstride + j * ystride + k] =  -phi[0 * xstride + j * ystride + k] + 2 * bc.xneg.value;
         phi[-2 * xstride + j * ystride + k] =  -phi[0 * xstride + j * ystride + k] + 2 * bc.xneg.value;
       }
-      else { // (bc.xneg.type == ocu::BC_NEUMANN)
+      else if (bc.xneg.type == ocu::BC_NEUMANN) {
         phi[-1 * xstride + j * ystride + k] = phi[0 * xstride + j * ystride + k] - hx * bc.xneg.value;
         phi[-2 * xstride + j * ystride + k] = phi[0 * xstride + j * ystride + k] - 2 * hx * bc.xneg.value;
       }
@@ -223,7 +223,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level2_nocorners(
         phi[(nx  ) * xstride + j * ystride + k] =  -phi[(nx-1) * xstride + j * ystride + k] + 2 * bc.xpos.value;
         phi[(nx+1) * xstride + j * ystride + k] =  -phi[(nx-1) * xstride + j * ystride + k] + 2 * bc.xpos.value;
       }
-      else { // (bc.xpos.type == ocu::BC_NEUMANN)
+      else if (bc.xpos.type == ocu::BC_NEUMANN) {
         phi[(nx  ) * xstride + j * ystride + k] =  phi[(nx-1) * xstride  + j * ystride + k] + hx * bc.xpos.value;
         phi[(nx+1) * xstride + j * ystride + k] =  phi[(nx-1) * xstride  + j * ystride + k] + 2 * hx * bc.xpos.value;
       }
@@ -254,7 +254,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_z(
       else if (bc.zneg.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + j * ystride + -1] =  -phi[i * xstride + j * ystride + 0] + 2 * bc.zneg.value;
       }
-      else { // (bc.zneg.type == ocu::BC_NEUMANN)
+      else if (bc.zneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + -1] = phi[i * xstride + j * ystride + 0] - hz * bc.zneg.value;
       }
 
@@ -265,7 +265,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_z(
       else if (bc.zpos.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + j * ystride + nz] =  -phi[i * xstride + j * ystride + (nz-1)] + 2 * bc.zpos.value;
       }
-      else { // (bc.zpos.type == ocu::BC_NEUMANN)
+      else if (bc.zpos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + j * ystride + nz] =  phi[i * xstride + j * ystride + (nz-1)] + hz * bc.zpos.value;
       }
   }
@@ -291,7 +291,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_y(
       else if (bc.yneg.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + -1 * ystride + k] =  -phi[i * xstride + 0 * ystride + k] + 2 * bc.yneg.value;
       }
-      else { // (bc.yneg.type == ocu::BC_NEUMANN)
+      else if (bc.yneg.type == ocu::BC_NEUMANN) {
         phi[i * xstride + -1 * ystride + k] = phi[i * xstride + 0 * ystride + k] - hy * bc.yneg.value;
       }
 
@@ -302,7 +302,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_y(
       else if (bc.ypos.type == ocu::BC_DIRICHELET) {
         phi[i * xstride + ny * ystride + k] =  -phi[i * xstride + (ny-1) * ystride + k] + 2 * bc.ypos.value;
       }
-      else { // (bc.ypos.type == ocu::BC_NEUMANN)
+      else if (bc.ypos.type == ocu::BC_NEUMANN) {
         phi[i * xstride + ny * ystride + k] =  phi[i * xstride + (ny-1) * ystride + k] + hy * bc.ypos.value;
       }
   }
@@ -329,7 +329,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_x(
       else if (bc.xneg.type == ocu::BC_DIRICHELET) {
         phi[-1 * xstride + j * ystride + k] =  -phi[0 * xstride + j * ystride + k] + 2 * bc.xneg.value;
       }
-      else { // (bc.xneg.type == ocu::BC_NEUMANN)
+      else if (bc.xneg.type == ocu::BC_NEUMANN) {
         phi[-1 * xstride + j * ystride + k] = phi[0 * xstride + j * ystride + k] - hx * bc.xneg.value;
       }
 
@@ -340,7 +340,7 @@ __global__ void kernel_apply_3d_boundary_conditions_level1_x(
       else if (bc.xpos.type == ocu::BC_DIRICHELET) {
         phi[nx * xstride + j * ystride + k] =  -phi[(nx-1) * xstride + j * ystride + k] + 2 * bc.xpos.value;
       }
-      else { // (bc.xpos.type == ocu::BC_NEUMANN)
+      else if (bc.xpos.type == ocu::BC_NEUMANN) {
         phi[nx * xstride + j * ystride + k] =  phi[(nx-1) * xstride  + j * ystride + k] + hx * bc.xpos.value;
       }
   }
@@ -723,7 +723,7 @@ apply_3d_boundary_conditions_level1_nocorners(
   const BoundaryConditionSet &bc, 
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
     printf("[ERROR] apply_3d_boundary_conditions_level1_nocorners - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -747,7 +747,7 @@ apply_3d_boundary_conditions_level1_nocorners(
   KernelWrapper wrapper;
   wrapper.PreKernel();
 
-  kernel_apply_3d_boundary_conditions_level1_nocorners<<<Dg, Db>>>(&grid.at(0,0,0), bc,
+  kernel_apply_3d_boundary_conditions_level1_nocorners<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
     (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), nx, ny, nz);
   return wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_nocorners", nz);
 }
@@ -760,7 +760,7 @@ apply_3d_boundary_conditions_level1(
   const BoundaryConditionSet &bc, 
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
     printf("[ERROR] apply_3d_boundary_conditions_level1 - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -788,7 +788,7 @@ apply_3d_boundary_conditions_level1(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_boundary_conditions_level1_x<<<Dg, Db>>>(&grid.at(0,0,0), bc,
+    kernel_apply_3d_boundary_conditions_level1_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_x", nz))
       return false;
@@ -799,7 +799,7 @@ apply_3d_boundary_conditions_level1(
     dim3 Db(16, 16);
     
     wrapper.PreKernel();
-    kernel_apply_3d_boundary_conditions_level1_y<<<Dg, Db>>>(&grid.at(0,0,0), bc,
+    kernel_apply_3d_boundary_conditions_level1_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_y", nz))
       return false;
@@ -810,7 +810,7 @@ apply_3d_boundary_conditions_level1(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_boundary_conditions_level1_z<<<Dg, Db>>>(&grid.at(0,0,0), bc,
+    kernel_apply_3d_boundary_conditions_level1_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_z", nz))
       return false;
@@ -827,7 +827,7 @@ apply_3d_mac_boundary_conditions_level1(
   const BoundaryConditionSet &bc, 
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_FORCED_INFLOW_VARIABLE_SLIP)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_FORCED_INFLOW_VARIABLE_SLIP)) {
     printf("[ERROR] apply_3d_mac_boundary_conditions_level1 - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -868,7 +868,7 @@ apply_3d_mac_boundary_conditions_level1(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level1_x<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level1_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_x", nz))
       return false;
@@ -879,7 +879,7 @@ apply_3d_mac_boundary_conditions_level1(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level1_y<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level1_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_y", nz))
       return false;
@@ -890,7 +890,7 @@ apply_3d_mac_boundary_conditions_level1(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level1_z<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level1_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_z", nz))
       return false;
@@ -908,7 +908,7 @@ apply_3d_boundary_conditions_level2_nocorners(
   const BoundaryConditionSet &bc,
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
     printf("[ERROR] apply_3d_boundary_conditions_level2_nocorners - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -931,7 +931,7 @@ apply_3d_boundary_conditions_level2_nocorners(
 
   KernelWrapper wrapper;
   wrapper.PreKernel();
-  kernel_apply_3d_boundary_conditions_level2_nocorners<<<Dg, Db>>>(&grid.at(0,0,0), bc,
+  kernel_apply_3d_boundary_conditions_level2_nocorners<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
     (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), nx, ny, nz);
   return wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level2_nocorners", nz);
 }
@@ -944,7 +944,7 @@ apply_3d_mac_boundary_conditions_level2(
   const BoundaryConditionSet &bc,
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_FORCED_INFLOW_VARIABLE_SLIP)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_FORCED_INFLOW_VARIABLE_SLIP)) {
     printf("[ERROR] apply_3d_mac_boundary_conditions_level2 - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -984,7 +984,7 @@ apply_3d_mac_boundary_conditions_level2(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level2_x<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level2_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_x", nz))
       return false;
@@ -995,7 +995,7 @@ apply_3d_mac_boundary_conditions_level2(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level2_y<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level2_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_y", nz))
       return false;
@@ -1006,7 +1006,7 @@ apply_3d_mac_boundary_conditions_level2(
     dim3 Db(16, 16);
 
     wrapper.PreKernel();
-    kernel_apply_3d_mac_boundary_conditions_level2_z<<<Dg, Db>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
+    kernel_apply_3d_mac_boundary_conditions_level2_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
     if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_z", nz))
       return false;
@@ -1022,7 +1022,7 @@ apply_3d_boundary_conditions_level1_nocorners(
   const BoundaryConditionSet &bc, 
   double hx, double hy, double hz)
 {
-  if (!bc.check_type(BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
+  if (!bc.check_type(BC_NONE, BC_PERIODIC, BC_DIRICHELET, BC_NEUMANN)) {
     printf("[ERROR] apply_3d_boundary_conditions_level1_nocorners - invalid boundary condition types %d, %d, %d, %d, %d,%d\n", 
       bc.xpos.type, bc.xneg.type, bc.ypos.type, bc.yneg.type, bc.zpos.type, bc.zneg.type);
     return false;
@@ -1042,7 +1042,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.zneg.type == ocu::BC_DIRICHELET) {
         phi.at(i,j,-1) = -phi.at(i,j,0) + (T)2 * (T)bc.zneg.value;
       }
-      else { // (bc.zneg.type == ocu::BC_NEUMANN)
+      else if (bc.zneg.type == ocu::BC_NEUMANN) {
         phi.at(i,j,-1) = phi.at(i,j,0) - (T)hz * (T)bc.zneg.value;
       }
 
@@ -1053,7 +1053,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.zpos.type == ocu::BC_DIRICHELET) {
         phi.at(i,j,nz) = -phi.at(i,j,nz-1) + (T)2 * (T)bc.zpos.value;
       }
-      else { // (bc.zpos.type == ocu::BC_NEUMANN)
+      else if (bc.zpos.type == ocu::BC_NEUMANN) {
         phi.at(i,j,nz) = phi.at(i,j,nz-1) + (T)hz * (T)bc.zpos.value;
       }
     }
@@ -1068,7 +1068,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.yneg.type == ocu::BC_DIRICHELET) {
         phi.at(i,-1,k) = -phi.at(i,0,k) + (T)2 * (T)bc.yneg.value;
       }
-      else { // (bc.yneg.type == ocu::BC_NEUMANN)
+      else if (bc.yneg.type == ocu::BC_NEUMANN) {
         phi.at(i,-1,k) = phi.at(i,0,k) - (T)hy * (T)bc.yneg.value;
       }
 
@@ -1079,7 +1079,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.ypos.type == ocu::BC_DIRICHELET) {
         phi.at(i,ny,k) = -phi.at(i,ny-1,k) + (T)2 * (T)bc.ypos.value;
       }
-      else { // (bc.ypos.type == ocu::BC_NEUMANN)
+      else if (bc.ypos.type == ocu::BC_NEUMANN) {
         phi.at(i,ny,k) = phi.at(i,ny-1,k) + (T)hy * (T)bc.ypos.value;
       }
     }
@@ -1092,7 +1092,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.xneg.type == ocu::BC_DIRICHELET) {
         phi.at(-1,j,k) = -phi.at(0,j,k) + (T)2 * (T)bc.xneg.value;
       }
-      else { // (bc.xneg.type == ocu::BC_NEUMANN)
+      else if (bc.xneg.type == ocu::BC_NEUMANN) {
         phi.at(-1,j,k) = phi.at(0,j,k) - (T)hx * (T)bc.xneg.value;
       }
 
@@ -1102,7 +1102,7 @@ apply_3d_boundary_conditions_level1_nocorners(
       else if (bc.xpos.type == ocu::BC_DIRICHELET) {
         phi.at(nx,j,k) = -phi.at(nx-1,j,k) + (T)2 * (T)bc.xpos.value;
       }
-      else { // (bc.xpos.type == ocu::BC_NEUMANN)
+      else if (bc.xpos.type == ocu::BC_NEUMANN) {
         phi.at(nx,j,k) =  phi.at(nx-1,j,k) + (T)hx * (T)bc.xpos.value;
       }
     }

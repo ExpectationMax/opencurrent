@@ -14,14 +14,13 @@
  *  limitations under the License.
  */
 
-#include "cuda.h"
 #include <cstdio>
 
 #include "ocuutil/reduction_op.h"
 #include "ocustorage/grid3d.h"
 #include "ocustorage/grid3dops.h"
-#include "ocuutil/timer.h"
-#include "ocuutil/timing_pool.h"
+#include "ocuutil/kernel_wrapper.h"
+#include "ocustorage/coarray.h"
 
 template<typename T, typename S>
 __global__ void Grid3DDevice_copy_all_data(T *to, const S*from, int n)
@@ -167,20 +166,21 @@ bool Grid3DDevice<T>::reduce_checknan(T &result) const
   return reduce_with_operator(*this, result, ReduceDevCheckNan<T>());
 }
 
+template<>
+bool Grid3DDevice<int>::reduce_checknan(int &result) const
+{
+  printf("[WARNING] Grid3DDevice<int>::reduce_checknan - operation not supported for 'int' types\n");
+  return false;
+}
+
 
 template<typename T>
 bool Grid3DDevice<T>::clear_zero()
 {
-  GPUTimer timer;
-  timer.start();
-  if ((unsigned int)CUDA_SUCCESS != cudaMemset(this->_buffer, 0, this->num_allocated_elements() * sizeof(T))) {
-    printf("[ERROR] Grid3DDeviceT::clear_zero - cudaMemset failed\n");
-    return false;
-  }
-  timer.stop();
-  global_timer_add_timing("cudaMemset", timer.elapsed_ms());
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemset(this->_buffer, 0, this->num_allocated_elements() * sizeof(T));
+  return wrapper.PostKernel("cudaMemset");
 }
 
 template<typename T>
@@ -189,19 +189,10 @@ bool Grid3DDevice<T>::clear(T val)
   dim3 Dg((this->num_allocated_elements()+255) / 256);
   dim3 Db(256);
   
-  GPUTimer timer;
-  timer.start();
-  Grid3DDevice_clear<<<Dg, Db>>>(this->_buffer, val, this->num_allocated_elements());
-  timer.stop();
-  global_timer_add_timing("Grid3DDevice_clear", timer.elapsed_ms());
-
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid3DDeviceF::clear - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid3DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), val, this->num_allocated_elements());
+  return wrapper.PostKernel("Grid3DDevice_clear");
 }
 
 
@@ -214,16 +205,10 @@ Grid3DDevice<T>::copy_all_data(const Grid3DHost<T> &from)
     return false;
   }
 
-  GPUTimer timer;
-  timer.start();
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice)) {
-    printf("[ERROR] Grid3DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  timer.stop();
-  global_timer_add_timing("cudaMemcpy(HostToDevice)", timer.elapsed_ms());
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice);
+  return wrapper.PostKernel("cudaMemcpy(HostToDevice)");
 }
 
 
@@ -241,19 +226,10 @@ Grid3DDevice<T>::copy_all_data(const Grid3DDevice<S> &from)
   dim3 Dg((this->num_allocated_elements()+511) / 512);
   dim3 Db(512);
   
-  GPUTimer timer;
-  timer.start();
-  Grid3DDevice_copy_all_data<<<Dg, Db>>>(this->buffer(), from.buffer(), this->num_allocated_elements());
-  timer.stop();
-  global_timer_add_timing("Grid3DDevice_copy_all_data", timer.elapsed_ms());
-
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid3DDevice::copy_all_data - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid3DDevice_copy_all_data<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), from.buffer(), this->num_allocated_elements());
+  return wrapper.PostKernel("Grid3DDevice_copy_all_data");
 }
 
 template<>
@@ -266,16 +242,10 @@ Grid3DDevice<float>::copy_all_data(const Grid3DDevice<float> &from)
     return false;
   }
 
-  GPUTimer timer;
-  timer.start();
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(float) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice)) {
-    printf("[ERROR] Grid3DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  timer.stop();
-  global_timer_add_timing("cudaMemcpy(DeviceToDevice)", timer.elapsed_ms());
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(float) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<>
@@ -288,16 +258,10 @@ Grid3DDevice<int>::copy_all_data(const Grid3DDevice<int> &from)
     return false;
   }
 
-  GPUTimer timer;
-  timer.start();
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(int) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice)) {
-    printf("[ERROR] Grid3DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  timer.stop();
-  global_timer_add_timing("cudaMemcpy(DeviceToDevice)", timer.elapsed_ms());
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(int) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<>
@@ -310,16 +274,10 @@ Grid3DDevice<double>::copy_all_data(const Grid3DDevice<double> &from)
     return false;
   }
 
-  GPUTimer timer;
-  timer.start();
-  if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->buffer(), from.buffer(), sizeof(double) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice)) {
-    printf("[ERROR] Grid3DDevice::copy_all_data - cudaMemcpy failed\n");
-    return false;
-  }
-  timer.stop();
-  global_timer_add_timing("cudaMemcpy(DeviceToDevice)", timer.elapsed_ms());
-
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  cudaMemcpy(this->buffer(), from.buffer(), sizeof(double) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<typename T>
@@ -333,20 +291,10 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1)
   dim3 Dg((this->num_allocated_elements()+511) / 512);
   dim3 Db(512);
   
-  GPUTimer timer;
-  timer.start();
-  Grid3DDevice_linear_combination1<<<Dg, Db>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
-  timer.stop();
-  global_timer_add_timing("Grid3DDevice_linear_combination1", timer.elapsed_ms());
-
-
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid3DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid3DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
+  return wrapper.PostKernel("Grid3DDevice_linear_combination");
 }
 
 template<typename T>
@@ -380,35 +328,24 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
     dim3 Dg = dim3(blocksInX, blocksInY*blocksInZ);
     dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
-    GPUTimer timer;
-    timer.start();
-    Grid3DDevice_linear_combination2_3D<<<Dg, Db>>>(&this->at(0,0,0), alpha1, &g1.at(0,0,0), alpha2, &g2.at(0,0,0), 
+    KernelWrapper wrapper;
+    wrapper.PreKernel();
+    Grid3DDevice_linear_combination2_3D<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0,0,0), alpha1, &g1.at(0,0,0), alpha2, &g2.at(0,0,0), 
       this->xstride(), this->ystride(), this->nx(), this->ny(), this->nz(), 
       blocksInY, 1.0f / (float)blocksInY);
-    timer.stop();
-    global_timer_add_timing("Grid3DDevice_linear_combination2_3D", timer.elapsed_ms());
-
-
+    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
   }
   else {
     int block_size = 512;
     dim3 Dg((this->num_allocated_elements() + block_size - 1) / block_size);
     dim3 Db(block_size);
     
-    GPUTimer timer;
-    timer.start();
-    Grid3DDevice_linear_combination2<<<Dg, Db>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
-    timer.stop();
-    global_timer_add_timing("Grid3DDevice_linear_combination2", timer.elapsed_ms());
+    KernelWrapper wrapper;
+    wrapper.PreKernel();
+    Grid3DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
+    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
   }
 
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int)CUDA_SUCCESS) {
-    printf("[ERROR] Grid3DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }  
-
-  return true;
 }
 
 
@@ -457,56 +394,126 @@ bool Grid3DDevice<T>::init(int nx_val, int ny_val, int nz_val, int gx_val, int g
   }
   
   this->_shift_amount   = this->_gx * this->_pnzpny + this->_gy * this->_pnz + this->_gz + pre_padding; 
-  this->_shifted_buffer = this->_buffer + this->_shift_amount;
+  this->_shifted_buffer = this->buffer() + this->_shift_amount;
 
   return true;
 }
 
+template<typename T>
+Grid3DDeviceCo<T>::Grid3DDeviceCo(const char *id) 
+{
+  this->_table = CoArrayManager::register_coarray(id, this->_image_id, this);
+}
 
-template bool Grid3DDevice<float>::init(int nx_val, int ny_val, int nz_val, int gx_val, int gy_val, int gz_val, int padx, int pady, int padz);
-template bool Grid3DDevice<int>::init(int nx_val, int ny_val, int nz_val, int gx_val, int gy_val, int gz_val, int padx, int pady, int padz);
-template bool Grid3DDevice<double>::init(int nx_val, int ny_val, int nz_val, int gx_val, int gy_val, int gz_val, int padx, int pady, int padz);
+template<typename T>
+Grid3DDeviceCo<T>::~Grid3DDeviceCo() 
+{
+  CoArrayManager::unregister_coarray(this->_table->name, this->_image_id);
+}
 
-template Grid3DDevice<float>::~Grid3DDevice();
-template Grid3DDevice<int>::~Grid3DDevice();
-template Grid3DDevice<double>::~Grid3DDevice();
+template<typename T>
+Grid3DDeviceCo<T> *Grid3DDeviceCo<T>::co(int image)
+{ 
+  return (Grid3DDeviceCo<T> *)(this->_table->table[image]); 
+}
 
-template bool Grid3DDevice<float>::reduce_sqrsum(float &result) const;
-template bool Grid3DDevice<int>::reduce_sqrsum(int &result) const;
+template<typename T>
+const Grid3DDeviceCo<T> *Grid3DDeviceCo<T>::co(int image) const 
+{ 
+  return (const Grid3DDeviceCo<T> *)(this->_table->table[image]); 
+}
 
-template bool Grid3DDevice<float>::reduce_sum(float &result) const;
-template bool Grid3DDevice<int>::reduce_sum(int &result) const;
+template<>
+bool Grid3DDeviceCo<float>::co_reduce_maxabs(float &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsF()); 
+  return ok;
+}
 
-template bool Grid3DDevice<float>::reduce_checknan(float &result) const;
+template<>
+bool Grid3DDeviceCo<int>::co_reduce_maxabs(int &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsI()); 
+  return ok;
+}
 
-template bool Grid3DDevice<float>::copy_all_data(const Grid3DHost<float> &from);
-template bool Grid3DDevice<int>::copy_all_data(const Grid3DHost<int> &from);
-template bool Grid3DDevice<double>::copy_all_data(const Grid3DHost<double> &from);
+#ifdef OCU_DOUBLESUPPORT 
+template<>
+bool Grid3DDeviceCo<double>::co_reduce_maxabs(double &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsD()); 
+  return ok;
+}
+#endif
 
+template<typename T>
+bool Grid3DDeviceCo<T>::co_reduce_sum(T &result) const
+{
+  bool ok = reduce_sum(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid3DDeviceCo<T>::co_reduce_sqrsum(T &result) const
+{
+  bool ok = reduce_sqrsum(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid3DDeviceCo<T>::co_reduce_max(T &result) const
+{
+  bool ok = reduce_max(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid3DDeviceCo<T>::co_reduce_min(T &result) const
+{
+  bool ok = reduce_min(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid3DDeviceCo<T>::co_reduce_checknan(T &result) const
+{
+  bool ok = reduce_checknan(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
+  return ok;
+}
+
+template<>
+bool Grid3DDeviceCo<int>::co_reduce_checknan(int &result) const
+{
+  printf("[WARNING] Grid3DDeviceCo<int>::reduce_checknan - operation not supported for 'int' types\n");
+  return false;
+}
+
+
+template class Grid3DDevice<float>;
+template class Grid3DDevice<int>;
+template class Grid3DDeviceCo<float>;
+template class Grid3DDeviceCo<int>;
+
+// because these are doubly-templated, they need to be explicitly instantiated
 template bool Grid3DDevice<float>::copy_all_data(const Grid3DDevice<int> &from);
 template bool Grid3DDevice<float>::copy_all_data(const Grid3DDevice<double> &from);
-
 template bool Grid3DDevice<int>::copy_all_data(const Grid3DDevice<float> &from);
 template bool Grid3DDevice<int>::copy_all_data(const Grid3DDevice<double> &from);
 
-template bool Grid3DDevice<float>::clear_zero();
-template bool Grid3DDevice<int>::clear_zero();
-template bool Grid3DDevice<double>::clear_zero();
-
-template bool Grid3DDevice<float>::clear(float val);
-template bool Grid3DDevice<int>::clear(int val);
-
-template bool Grid3DDevice<float>::linear_combination(float alpha1, const Grid3DDevice<float> &g1);
-template bool Grid3DDevice<float>::linear_combination(float alpha1, const Grid3DDevice<float> &g1, float alpha2, const Grid3DDevice<float> &g2);
-
 #ifdef OCU_DOUBLESUPPORT
 
-template bool Grid3DDevice<double>::reduce_sqrsum(double &result) const;
-template bool Grid3DDevice<double>::reduce_sum(double &result) const;
-template bool Grid3DDevice<double>::reduce_checknan(double &result) const;
-template bool Grid3DDevice<double>::clear(double val);
-template bool Grid3DDevice<double>::linear_combination(double  alpha1, const Grid3DDevice<double> &g1);
-template bool Grid3DDevice<double>::linear_combination(double alpha1, const Grid3DDevice<double> &g1, double  alpha2, const Grid3DDevice<double> &g2);
+template class Grid3DDevice<double>;
+template class Grid3DDeviceCo<double>;
+
+// because these are doubly-templated, they need to be explicitly instantiated
 template bool Grid3DDevice<double>::copy_all_data(const Grid3DDevice<float> &from);
 template bool Grid3DDevice<double>::copy_all_data(const Grid3DDevice<int> &from);
 

@@ -17,6 +17,7 @@
 #ifndef __OCU_EQUATION_LAPLACIAN_CENT_1D_H__
 #define __OCU_EQUATION_LAPLACIAN_CENT_1D_H__
 
+#include <string>
 #include "ocuutil/boundary_condition.h"
 #include "ocuequation/solver.h"
 #include "ocustorage/grid1d.h"
@@ -29,14 +30,31 @@ namespace ocu {
 //! The discretization is assumed to be finite volume-type, where the grid point i is located position at (i*h)/2.
 //! Therefore "left" boundary conditions are applied half-way between cell 0 and cell -1, and half-way between cells.
 //! The solver uses a 2nd-order central differencing discretization of the laplacian.
-
-class Sol_LaplacianCentered1DHost : public Solver
+class Sol_LaplacianCentered1D : public Solver
 {
+protected:
   //**** CACHED INTERNAL STATE ****
   int _nx;
   double _coefficient;
   double _hx;
 
+public:
+  //**** MANAGERS ****
+  Sol_LaplacianCentered1D() { 
+    _coefficient = 1.0f;
+    _hx = 1;
+    _nx = 0;
+  }
+
+  int          nx()                    const  { return _nx; }
+  double      &h()                            { return _hx; }
+  const double&h()                     const  { return _hx; }
+  double      &coefficient()                  { return _coefficient; }
+  const double&coefficient()           const  { return _coefficient; }
+};
+
+class Sol_LaplacianCentered1DHost : public Sol_LaplacianCentered1D
+{
   //**** INTERNAL METHODS ****
   void apply_boundary_conditions();
 
@@ -50,20 +68,12 @@ public:
 
   //**** MANAGERS ****
   Sol_LaplacianCentered1DHost() { 
-    coefficient() = 1.0f;
   }
 
   //**** PUBLIC INTERFACE ****
   bool initialize_storage(int nx);
 
-  int          nx()                    const  { return _nx; }
-  double      &h()                            { return _hx; }
-  const double&h()                     const  { return _hx; }
-  double      &coefficient()                  { return _coefficient; }
-  const double&coefficient()           const  { return _coefficient; }
-
   bool solve();
-
 };
 
 
@@ -75,13 +85,8 @@ public:
 //! Therefore "left" boundary conditions are applied half-way between cell 0 and cell -1, and half-way between cells.
 //! The solver uses a 2nd-order central differencing discretization of the laplacian.
 
-class Sol_LaplacianCentered1DDevice : public Solver
+class Sol_LaplacianCentered1DDevice : public Sol_LaplacianCentered1D
 {
-  //**** CACHED INTERNAL STATE ****
-  int _nx;
-  double _coefficient;
-  double _hx;
-
   //**** INTERNAL METHODS ****
   void apply_boundary_conditions();
 
@@ -95,22 +100,36 @@ public:
 
   //**** MANAGERS ****
   Sol_LaplacianCentered1DDevice() { 
-    coefficient() = 1.0f;
   }
 
   //**** PUBLIC INTERFACE ****
   bool initialize_storage(int nx);
 
-  int          nx()                    const  { return _nx; }
-  double      &h()                            { return _hx; }
-  const double&h()                     const  { return _hx; }
-  double      &coefficient()                  { return _coefficient; }
-  const double&coefficient()           const  { return _coefficient; }
-
   bool solve();
 
 };
 
+
+class Sol_LaplacianCentered1DDeviceNew : public Sol_LaplacianCentered1D
+{
+public:
+
+  //**** PUBLIC STATE ****
+  Grid1DDeviceF *density;
+  Grid1DDeviceF deriv_densitydt;
+
+  //**** MANAGERS ****
+  Sol_LaplacianCentered1DDeviceNew()
+  { 
+    coefficient() = 1.0f;
+    density = 0;
+  }
+
+  //**** PUBLIC INTERFACE ****
+  bool initialize_storage(int nx, Grid1DDeviceF *density_val);
+
+  bool solve();
+};
 
 
 
