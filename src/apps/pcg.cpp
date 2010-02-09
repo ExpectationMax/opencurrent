@@ -14,13 +14,25 @@
  *  limitations under the License.
  */
 
-
 #include "ocuutil/float_routines.h"
 #include "ocuequation/sol_pcgpressure3d.h"
 #include "ocuequation/sol_mgpressure3d.h"
 #include "ocustorage/gridnetcdf.h"
 
 using namespace ocu;
+
+#ifndef OCU_DOUBLESUPPORT
+
+int main(int argc, const char **argv)
+{
+  printf("[ERROR] pcg executable required double precision support (OCU_TARGET_SM >= SM_13)\n");
+  return -1;
+}
+
+
+
+#else
+
 
 void init_pcg_solver(Sol_PCGPressure3DDeviceD &solver, Grid3DDeviceD &rhs, Grid3DDeviceD &coeff,
                  BoundaryConditionSet bc, 
@@ -316,3 +328,5 @@ int main(int argc, const char **argv)
 
   return 0;
 }
+
+#endif

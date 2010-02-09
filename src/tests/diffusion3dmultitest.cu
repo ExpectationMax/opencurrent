@@ -22,7 +22,7 @@
 using namespace ocu;
 
 
-DECLARE_UNITTEST_MULTIGPU_BEGIN(Diffusion3DMultiTest);
+DECLARE_UNITTEST_MULTIGPU_DOUBLE_BEGIN(Diffusion3DMultiTest);
 
 void run()
 {
@@ -82,5 +82,5 @@ void run()
 */
 }
 
-DECLARE_UNITTEST_END(Diffusion3DMultiTest);
+DECLARE_UNITTEST_DOUBLE_END(Diffusion3DMultiTest);
 

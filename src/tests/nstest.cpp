@@ -27,8 +27,8 @@ using namespace ocu;
 DECLARE_UNITTEST_BEGIN(NSTest);
 
 
-void allocate_particles(Grid1DHostF &hposx, Grid1DHostF &hposy, Grid1DHostF &hposz, Grid1DHostD &hvx, Grid1DHostD &hvy, Grid1DHostD &hvz,
-  Grid1DDeviceF &posx, Grid1DDeviceF &posy, Grid1DDeviceF &posz, Grid1DDeviceD &vx, Grid1DDeviceD &vy, Grid1DDeviceD &vz, 
+void allocate_particles(Grid1DHostF &hposx, Grid1DHostF &hposy, Grid1DHostF &hposz, Grid1DHostF &hvx, Grid1DHostF &hvy, Grid1DHostF &hvz,
+  Grid1DDeviceF &posx, Grid1DDeviceF &posy, Grid1DDeviceF &posz, Grid1DDeviceF &vx, Grid1DDeviceF &vy, Grid1DDeviceF &vz, 
     int nparts, float xsize, float ysize, float zsize)
 {
   hposx.init(nparts,0);
@@ -93,9 +93,9 @@ void run()
   UNITTEST_ASSERT_TRUE(eqn.set_parameters(params));
 
   Grid1DHostF hposx, hposy, hposz;
-  Grid1DHostD hvx, hvy, hvz;
+  Grid1DHostF hvx, hvy, hvz;
   Grid1DDeviceF posx, posy, posz;
-  Grid1DDeviceD vx, vy, vz;
+  Grid1DDeviceF vx, vy, vz;
 
   int nparts = 1000;
   allocate_particles(hposx, hposy, hposz, hvx, hvy, hvz, posx, posy, posz, vx, vy, vz, nparts, nx, ny, nz);
