@@ -16,6 +16,7 @@
 
 
 #include "ocuutil/float_routines.h"
+#include "ocuutil/thread.h"
 #include "ocustorage/grid3dboundary.h"
 #include "ocuequation/sol_pcgpressure3d.h"
 #include "ocustorage/gridnetcdf.h"
@@ -206,12 +207,12 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_apply_laplacian(Grid3DDevice<T> &dst, 
 
   PreKernel();
 #if 1
-  Sol_PCGPressure3DDevice_apply_laplacian<<<Dg, Db>>>(&dst.at(0,0,0), &src.at(0,0,0), &_coefficient->at(0,0,0), src.xstride(), src.ystride(), 
+  Sol_PCGPressure3DDevice_apply_laplacian<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&dst.at(0,0,0), &src.at(0,0,0), &_coefficient->at(0,0,0), src.xstride(), src.ystride(), 
     src.nx(), src.ny(), src.nz(), 
     fx_div_hsq, fy_div_hsq, fz_div_hsq, diag,
     blocksInY, 1.0f/(float)blocksInY);
 #else
-  Sol_PCGPressure3DDevice_apply_laplacian_uniform<<<Dg, Db>>>(&dst.at(0,0,0), &src.at(0,0,0), src.xstride(), src.ystride(), 
+  Sol_PCGPressure3DDevice_apply_laplacian_uniform<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&dst.at(0,0,0), &src.at(0,0,0), src.xstride(), src.ystride(), 
     src.nx(), src.ny(), src.nz(), 
     fx_div_hsq, fy_div_hsq, fz_div_hsq, diag,
     blocksInY, 1.0f/(float)blocksInY);
@@ -244,7 +245,7 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_diag_preconditioner(Grid3DDevice<T> &d
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_PCGPressure3DDevice_diag_preconditioner<<<Dg, Db>>>(&dst.at(0,0,0), &src.at(0,0,0), &_coefficient->at(0,0,0), src.xstride(), src.ystride(), 
+  Sol_PCGPressure3DDevice_diag_preconditioner<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&dst.at(0,0,0), &src.at(0,0,0), &_coefficient->at(0,0,0), src.xstride(), src.ystride(), 
     src.nx(), src.ny(), src.nz(), 
     fx_div_hsq, fy_div_hsq, fz_div_hsq,
     blocksInY, 1.0f/(float)blocksInY);
@@ -276,7 +277,7 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_dot_product(const Grid3DDevice<T> &a, 
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_PCGPressure3DDevice_ptwise_mult<<<Dg, Db>>>(&temp.at(0,0,0), &a.at(0,0,0), &b.at(0,0,0), a.xstride(), a.ystride(), 
+  Sol_PCGPressure3DDevice_ptwise_mult<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&temp.at(0,0,0), &a.at(0,0,0), &b.at(0,0,0), a.xstride(), a.ystride(), 
     a.nx(), a.ny(), a.nz(), 
     blocksInY, 1.0f/(float)blocksInY);
   PostKernel("Sol_PCGPressure3DDevice_ptwise_mult");

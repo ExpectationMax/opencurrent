@@ -17,9 +17,9 @@
 #include <cstdio>
 #include <cuda.h>
 
-#include "ocuutil/timer.h"
-#include "ocuutil/timing_pool.h"
+
 #include "ocuutil/float_routines.h"
+#include "ocuutil/thread.h"
 #include "ocustorage/grid3dops.h"
 #include "ocuequation/sol_passiveadvection3d.h"
 
@@ -117,13 +117,13 @@ Sol_PassiveAdvection3DDevice<T>::solve()
   PreKernel();
 
   if (interp_type == IT_FIRST_ORDER_UPWIND) {    
-    Sol_PassiveAdvection3D_apply_interp<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
+    Sol_PassiveAdvection3D_apply_interp<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
       (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), phi->xstride(), phi->ystride(), 
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorFirstOrderUpwind<T>());
 
   }
   else if (interp_type == IT_SECOND_ORDER_CENTERED) {
-    Sol_PassiveAdvection3D_apply_interp<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
+    Sol_PassiveAdvection3D_apply_interp<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&phi->at(0,0,0),&deriv_phidt->at(0,0,0),
       (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), phi->xstride(), phi->ystride(), 
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorSecondOrderCentered<T>());
   }

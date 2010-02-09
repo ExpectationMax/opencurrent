@@ -154,7 +154,7 @@ sample_points_3d(
 
   KernelWrapper wrapper;
   wrapper.PreKernel();
-  kernel_sample_points_3d<<<Dg, Db>>>(&phi_sampled.at(0), &position_x.at(0), &position_y.at(0), &position_z.at(0), nphi, bc,
+  kernel_sample_points_3d<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&phi_sampled.at(0), &position_x.at(0), &position_y.at(0), &position_z.at(0), nphi, bc,
                                       &phi.at(0,0,0), phi.xstride(), phi.ystride(), 
                                       (float)phi.nx(), (float)phi.ny(), (float)phi.nz(),
                                       period_nx, period_ny, period_nz,

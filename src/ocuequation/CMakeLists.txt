@@ -22,6 +22,7 @@ CUDA_ADD_LIBRARY(ocuequation
   parameters.h
   eqn_diffusion1d.h
   eqn_diffusion1d.cpp
+  eqn_diffusion1dco.cu
   eqn_incompressns3d.h
   eqn_incompressns3d.cpp
   eqn_incompressns3d.cu
@@ -56,6 +57,7 @@ CUDA_ADD_LIBRARY(ocuequation
   sol_gradient3ddev.cu
   sol_pcgpressure3d.h
   sol_pcgpressure3d.cu
+  sol_mgpressure3dco.cu
   ) 
 
 

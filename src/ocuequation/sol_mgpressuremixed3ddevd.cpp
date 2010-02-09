@@ -134,8 +134,6 @@ bool Sol_MultigridPressureMixed3DDeviceD::initialize_storage(int nx_val, int ny_
     return false;  
   }
 
-
-
   return true;
 }
 

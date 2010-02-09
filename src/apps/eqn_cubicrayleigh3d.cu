@@ -18,6 +18,7 @@
 
 #include "eqn_cubicrayleigh3d.h"
 #include "ocuutil/kernel_wrapper.h"
+#include "ocuutil/thread.h"
 
 __global__ void kernel_apply_thermal_boundary_conditions(
     double *phi, 
@@ -99,7 +100,7 @@ bool Eqn_CubicRayleigh3DD::enforce_thermal_boundary_conditions()
   KernelWrapper wrapper;
   wrapper.PreKernel();
 
-  kernel_apply_thermal_boundary_conditions<<<Dg, Db>>>(&_temp.at(0,0,0), 
+  kernel_apply_thermal_boundary_conditions<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&_temp.at(0,0,0), 
     _vertical_direction,
     hx(), hy(), hz(), _temp.xstride(), _temp.ystride(), nx(), ny(), nz());
 

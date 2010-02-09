@@ -19,8 +19,8 @@
 # 1. Copy this file to System.cmake
 # 2. Edit as per your system configuration
 # 3. Execute CMake.  Out-of-source building is recommented, e.g.
-#    > mkdir linux64-gcc43
-#    > cd linux64-gcc43
+#    > mkdir sm13_rel 
+#    > cd sm13_rel 
 #    > cmake ../src
 # 4. Edit CMakeCache.txt file as desired.
 # 5. Build (on linux, execute 'make' from the CMake directory).
@@ -46,7 +46,7 @@
 #
 # Variables from the FindCUDA module:
 #
-# CUDA_INSTALL_PREFIX
+# CUDA_TOOLKIT_ROOT_DIR
 # 	Root directory under which the CUDA installation can be found.
 #
 # Variables from the FindNetCDF module:
@@ -69,7 +69,7 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
 # Windows example - modify as appropriate
 #
 
-  SET(CUDA_INSTALL_PREFIX "C:/CUDA")
+  SET(CUDA_TOOLKIT_ROOT_DIR "C:/CUDA")
   SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
 
 # Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths
@@ -82,7 +82,7 @@ else()
 # Linux example - modify as appropriate
 #
 
-  SET(CUDA_INSTALL_PREFIX "/usr/local/cuda/")
+  SET(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda/")
   SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
 
 # Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths

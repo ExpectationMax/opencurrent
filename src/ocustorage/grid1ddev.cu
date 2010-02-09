@@ -18,6 +18,8 @@
 #include <cstdio>
 
 #include "ocuutil/reduction_op.h"
+#include "ocuutil/kernel_wrapper.h"
+#include "ocustorage/coarray.h"
 #include "ocustorage/grid1d.h"
 #include "ocustorage/grid1dops.h"
 
@@ -30,6 +32,18 @@ __global__ void Grid1DDevice_linear_combination1(T *result, T alpha1, const T *g
 
   if (i >= 0 && i < nx) {
     result[i] = g1[i] * alpha1;  
+  }
+}
+
+template<typename T>
+__global__ void Grid1DDevice_clear(T *result, T t, int nx, int gx)
+{
+  int i = threadIdx.x + __umul24(blockIdx.x, blockDim.x);
+  
+  i -= gx;
+
+  if (i >= 0 && i < nx) {
+    result[i] = t;
   }
 }
 
@@ -106,12 +120,20 @@ bool Grid1DDevice<double>::reduce_min(double &result) const
   return reduce_with_operator(*this, result, ReduceDevMinD());
 }
 
+template<>
+bool Grid1DDevice<double>::reduce_checknan(double &result) const
+{
+  return reduce_with_operator(*this, result, ReduceDevCheckNan<double>());
+}
+
+
+
 #endif // OCU_DOUBLESUPPORT
 
-template<typename T>
-bool Grid1DDevice<T>::reduce_checknan(T &result) const
+template<>
+bool Grid1DDevice<float>::reduce_checknan(float &result) const
 {
-  return reduce_with_operator(*this, result, ReduceDevCheckNan<T>());
+  return reduce_with_operator(*this, result, ReduceDevCheckNan<float>());
 }
 
 template<typename T>
@@ -126,15 +148,39 @@ bool Grid1DDevice<T>::reduce_sqrsum(T &result) const
   return reduce_with_operator(*this, result, ReduceDevSqrSum<T>());
 }
 
+template<>
+bool Grid1DDevice<int>::reduce_checknan(int &result) const
+{
+  printf("[WARNING] Grid1DDevice<int>::reduce_checknan - operation not supported for 'int' types\n");
+  return false;
+}
 
 
 
 template<typename T>
-void Grid1DDevice<T>::clear_zero()
+bool Grid1DDevice<T>::clear(T t)
 {
+  dim3 Dg((this->nx() + this->gx() + 255) / 256);
+  dim3 Db(256);
+
+  KernelWrapper wrapper;
+  wrapper.PreKernel();  
+  Grid1DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), t, this->nx(), this->gx());
+  
+  return wrapper.PostKernel("Grid1DDevice_clear");
+}
+
+
+template<typename T>
+bool Grid1DDevice<T>::clear_zero()
+{
+
   if (cudaMemset(this->_buffer, 0, this->_pnx * sizeof(T)) != (unsigned int)CUDA_SUCCESS) {
     printf("[ERROR] Grid1DDeviceT::clear_zero - cudaMemset failed\n");
+    return false;
   }
+
+  return true;
 }
 
 
@@ -217,15 +263,11 @@ bool Grid1DDevice<T>::linear_combination(T alpha1, const Grid1DDevice<T> &g1)
 
   dim3 Dg((this->nx() + this->gx() + 255) / 256);
   dim3 Db(256);
-  
-  Grid1DDevice_linear_combination1<<<Dg, Db>>>(&this->at(0), alpha1, &g1.at(0), this->nx(), this->gx());
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int) CUDA_SUCCESS) {
-    printf("[ERROR] Grid1DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
-  
-  return true;
+
+  KernelWrapper wrapper;
+  wrapper.PreKernel();
+  Grid1DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), alpha1, &g1.at(0), this->nx(), this->gx());
+  return wrapper.PostKernel("Grid1DDeviceF::linear_combination");
 }
 
 template<typename T>
@@ -245,14 +287,12 @@ bool Grid1DDevice<T>::linear_combination(T alpha1, const Grid1DDevice<T> &g1, T 
   dim3 Dg((this->nx() + this->gx() + 255) / 256);
   dim3 Db(256);
   
-  Grid1DDevice_linear_combination2<<<Dg, Db>>>(&this->at(0), alpha1, &g1.at(0), alpha2, &g2.at(0), this->nx(), this->gx());
-  cudaError_t er = cudaGetLastError();
-  if (er != (unsigned int) CUDA_SUCCESS) {
-    printf("[ERROR] Grid1DDeviceF::linear_combination - CUDA error \"%s\"\n", cudaGetErrorString(er));
-    return false;    
-  }
   
-  return true;
+  KernelWrapper wrapper;
+
+  wrapper.PreKernel();
+  Grid1DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), alpha1, &g1.at(0), alpha2, &g2.at(0), this->nx(), this->gx());
+  return wrapper.PostKernel("Grid1DDeviceF::linear_combination");
 }
 
 
@@ -285,55 +325,119 @@ bool Grid1DDevice<T>::init(int nx_val, int gx_val)
     return false;
   }
   
-  this->_shifted_buffer = this->_buffer + this->_gx;
+  this->_shifted_buffer = this->buffer() + this->_gx;
   return true;
 }
 
 
-template bool Grid1DDevice<float>::init(int nx_val, int gx_val);
-template bool Grid1DDevice<int>::init(int nx_val, int gx_val);
-template bool Grid1DDevice<double>::init(int nx_val, int gx_val);
+template<typename T>
+Grid1DDeviceCo<T>::Grid1DDeviceCo(const char *id) 
+{ 
+  this->_table = CoArrayManager::register_coarray(id, this->_image_id, this);
+}
 
-template Grid1DDevice<float>::~Grid1DDevice();
-template Grid1DDevice<int>::~Grid1DDevice();
-template Grid1DDevice<double>::~Grid1DDevice();
+template<typename T>
+Grid1DDeviceCo<T>::~Grid1DDeviceCo() 
+{
+  CoArrayManager::unregister_coarray(_table->name, this->_image_id);
+}
 
-template bool Grid1DDevice<float>::reduce_sqrsum(float &result) const;
-template bool Grid1DDevice<int>::reduce_sqrsum(int &result) const;
 
-template bool Grid1DDevice<float>::reduce_sum(float &result) const;
-template bool Grid1DDevice<int>::reduce_sum(int &result) const;
+template<typename T>
+Grid1DDeviceCo<T> *Grid1DDeviceCo<T>::co(int image)       
+{ 
+  return (Grid1DDeviceCo<T> *)(_table->table[image]); 
+}
 
-template bool Grid1DDevice<float>::reduce_checknan(float &result) const;
+template<typename T>
+const Grid1DDeviceCo<T> *Grid1DDeviceCo<T>::co(int image) const 
+{ 
+  return (const Grid1DDeviceCo<T> *)(_table->table[image]); 
+}
 
-template bool Grid1DDevice<float>::copy_interior_data(const Grid1DHost<float> &from);
-template bool Grid1DDevice<int>::copy_interior_data(const Grid1DHost<int> &from);
-template bool Grid1DDevice<double>::copy_interior_data(const Grid1DHost<double> &from);
 
-template bool Grid1DDevice<float>::copy_all_data(const Grid1DHost<float> &from);
-template bool Grid1DDevice<int>::copy_all_data(const Grid1DHost<int> &from);
-template bool Grid1DDevice<double>::copy_all_data(const Grid1DHost<double> &from);
 
-template bool Grid1DDevice<float>::copy_interior_data(const Grid1DDevice<float> &from);
-template bool Grid1DDevice<int>::copy_interior_data(const Grid1DDevice<int> &from);
-template bool Grid1DDevice<double>::copy_interior_data(const Grid1DDevice<double> &from);
 
-template bool Grid1DDevice<float>::copy_all_data(const Grid1DDevice<float> &from);
-template bool Grid1DDevice<int>::copy_all_data(const Grid1DDevice<int> &from);
-template bool Grid1DDevice<double>::copy_all_data(const Grid1DDevice<double> &from);
 
-template void Grid1DDevice<float>::clear_zero();
-template void Grid1DDevice<int>::clear_zero();
-template void Grid1DDevice<double>::clear_zero();
+template<>
+bool Grid1DDeviceCo<float>::co_reduce_maxabs(float &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsF()); 
+  return ok;
+}
 
-template bool Grid1DDevice<float>::linear_combination(float alpha1, const Grid1DDevice<float> &g1);
-template bool Grid1DDevice<float>::linear_combination(float alpha1, const Grid1DDevice<float> &g1, float alpha2, const Grid1DDevice<float> &g2);
+template<>
+bool Grid1DDeviceCo<int>::co_reduce_maxabs(int &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsI()); 
+  return ok;
+}
+
+#ifdef OCU_DOUBLESUPPORT 
+template<>
+bool Grid1DDeviceCo<double>::co_reduce_maxabs(double &result) const
+{
+  bool ok = reduce_maxabs(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMaxAbsD()); 
+  return ok;
+}
+#endif
+
+template<typename T>
+bool Grid1DDeviceCo<T>::co_reduce_sum(T &result) const
+{
+  bool ok = reduce_sum(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid1DDeviceCo<T>::co_reduce_sqrsum(T &result) const
+{
+  bool ok = reduce_sqrsum(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid1DDeviceCo<T>::co_reduce_max(T &result) const
+{
+  bool ok = reduce_max(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid1DDeviceCo<T>::co_reduce_min(T &result) const
+{
+  bool ok = reduce_min(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
+  return ok;
+}
+
+template<typename T>
+bool Grid1DDeviceCo<T>::co_reduce_checknan(T &result) const
+{
+  bool ok = reduce_checknan(result);
+  result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
+  return ok;
+}
+
+
+
+
+template class Grid1DDevice<float>;
+template class Grid1DDevice<int>;
+template class Grid1DDeviceCo<float>;
+template class Grid1DDeviceCo<int>;
 
 #ifdef OCU_DOUBLESUPPORT
 
-template bool Grid1DDevice<double>::reduce_sqrsum(double &result) const;
-template bool Grid1DDevice<double>::reduce_sum(double &result) const;
-template bool Grid1DDevice<double>::reduce_checknan(double &result) const;
+template class Grid1DDevice<double>;
+template class Grid1DDeviceCo<double>;
+
 
 #endif // OCU_DOUBLESUPPORT
 

@@ -18,8 +18,8 @@
 #include <cstdio>
 
 #include "ocuutil/float_routines.h"
+#include "ocuutil/thread.h"
 #include "ocuequation/sol_mgpressure3d.h"
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,7 +366,7 @@ Sol_MultigridPressure3DDevice<float>::unbind_tex_prolong()
 
 template<>
 bool 
-Sol_MultigridPressure3DDevice<float>::invoke_kernel_relax(Grid3DDevice<float> &u_grid, Grid3DDevice<float> &b_grid, Grid2DDevice<float> &diag_grid, int red_black, double h)
+Sol_MultigridPressure3DDevice<float>::invoke_kernel_relax(Grid3DDevice<float> &u_grid, Grid3DDevice<float> &b_grid, Grid2DDevice<float> &diag_grid, int red_black, double h, const BoundaryConditionSet &this_bc)
 {
   int tnx = (u_grid.nz())/2;
   int tny = u_grid.ny();
@@ -387,9 +387,9 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_relax(Grid3DDevice<float> &u
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_MultigridPressure3DDeviceF_relax<<<Dg,Db>>>(&u_grid.at(0,0,0), u_grid.xstride(), u_grid.ystride(), u_grid.nx(), u_grid.ny(), u_grid.nz(), u_grid.shift_amount(), red_black, 
+  Sol_MultigridPressure3DDeviceF_relax<<<Dg,Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), u_grid.xstride(), u_grid.ystride(), u_grid.nx(), u_grid.ny(), u_grid.nz(), u_grid.shift_amount(), red_black, 
     (float)_omega, (float)(h*h), (float)_fx, (float)_fy, (float)_fz,  (float)(2*_fx + 2*_fy +2*_fz),
-    (float)bc_diag_mod(bc.xpos, _fx), (float)bc_diag_mod(bc.xneg, _fx), (float)bc_diag_mod(bc.ypos, _fy), (float)bc_diag_mod(bc.yneg, _fy), (float)bc_diag_mod(bc.zpos, _fz), (float)bc_diag_mod(bc.zneg, _fz), 
+    (float)bc_diag_mod(this_bc.xpos, _fx), (float)bc_diag_mod(this_bc.xneg, _fx), (float)bc_diag_mod(this_bc.ypos, _fy), (float)bc_diag_mod(this_bc.yneg, _fy), (float)bc_diag_mod(this_bc.zpos, _fz), (float)bc_diag_mod(this_bc.zneg, _fz), 
     blocksInY, 1.0f/(float)blocksInY);
   return PostKernel("Sol_MultigridPressure3DDeviceF_relax", tnz);
 }
@@ -423,7 +423,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_calculate_residual(Grid3DDev
   double diag = 2 * (_fx + _fy + _fz) / (h*h);
 
   PreKernel();
-  Sol_MultigridPressure3DDeviceF_calculate_residual<<<Dg, Db>>>(&b_grid.at(0,0,0), &r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), r_grid.nx(), r_grid.ny(), r_grid.nz(), r_grid.shift_amount(),
+  Sol_MultigridPressure3DDeviceF_calculate_residual<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&b_grid.at(0,0,0), &r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), r_grid.nx(), r_grid.ny(), r_grid.nz(), r_grid.shift_amount(),
     (float)fx_div_hsq, (float)fy_div_hsq, (float)fz_div_hsq, (float)diag, blocksInY, 1.0f/(float)blocksInY);
   return PostKernel("Sol_MultigridPressure3DDeviceF_calculate_residual", tnz);
 }
@@ -450,7 +450,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_restrict(Grid3DDevice<float>
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_MultigridPressure3DDeviceF_restrict<<<Dg, Db>>>(&r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), 
+  Sol_MultigridPressure3DDeviceF_restrict<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), 
     &b_coarse_grid.at(0,0,0), b_coarse_grid.xstride(), b_coarse_grid.ystride(), b_coarse_grid.nx(), b_coarse_grid.ny(), b_coarse_grid.nz(), 
     blocksInY, 1.0f/(float)blocksInY);
   return PostKernel("Sol_MultigridPressure3DDeviceF_restrict", tnz);
@@ -478,7 +478,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_prolong(Grid3DDevice<float> 
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_MultigridPressure3DDeviceF_prolong<<<Dg, Db>>>(&u_fine_grid.at(0,0,0), u_fine_grid.xstride(), u_fine_grid.ystride(), u_fine_grid.shift_amount(),
+  Sol_MultigridPressure3DDeviceF_prolong<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_fine_grid.at(0,0,0), u_fine_grid.xstride(), u_fine_grid.ystride(), u_fine_grid.shift_amount(),
     u_coarse_grid.xstride(), u_coarse_grid.ystride(), u_coarse_grid.nx(), u_coarse_grid.ny(), u_coarse_grid.nz(),  u_coarse_grid.shift_amount(),
     blocksInY, 1.0f/(float)blocksInY);
   return PostKernel("Sol_MultigridPressure3DDeviceF_prolong", tnz);

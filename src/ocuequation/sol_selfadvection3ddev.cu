@@ -18,6 +18,7 @@
 #include <cuda.h>
 
 #include "ocuutil/float_routines.h"
+#include "ocuutil/thread.h"
 #include "ocustorage/grid3dops.h"
 #include "ocuequation/sol_selfadvection3d.h"
 
@@ -382,12 +383,12 @@ Sol_SelfAdvection3DDevice<T>::solve_naive()
 
   PreKernel();
   if (interp_type == IT_FIRST_ORDER_UPWIND) {    
-    Sol_SelfAdvection3D_apply_upwind<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Sol_SelfAdvection3D_apply_upwind<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), u->xstride(), u->ystride(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorFirstOrderUpwind<T>());
   }
   else if (interp_type == IT_SECOND_ORDER_CENTERED) {
-    Sol_SelfAdvection3D_apply_upwind<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Sol_SelfAdvection3D_apply_upwind<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0),&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), u->xstride(), u->ystride(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorSecondOrderCentered<T>());
   }
@@ -473,11 +474,11 @@ Sol_SelfAdvection3DDevice<float>::solve_tex()
   PreKernel();
   
   if (interp_type == IT_FIRST_ORDER_UPWIND) {    
-    Advection3DF_apply_upwind_TEX<<<Dg, Db>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Advection3DF_apply_upwind_TEX<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (float)(1/_hx), (float)(1/_hy), (float)(1/_hz), u->xstride(), u->ystride(), u->shift_amount(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorFirstOrderUpwind<float>());
   } else if (interp_type == IT_SECOND_ORDER_CENTERED) {
-    Advection3DF_apply_upwind_TEX<<<Dg, Db>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Advection3DF_apply_upwind_TEX<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (float)(1/_hx), (float)(1/_hy), (float)(1/_hz), u->xstride(), u->ystride(), u->shift_amount(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorSecondOrderCentered<float>());
   }
@@ -562,12 +563,12 @@ Sol_SelfAdvection3DDevice<double>::solve_tex()
 
   PreKernel();
   if (interp_type == IT_FIRST_ORDER_UPWIND) {
-    Advection3DD_apply_upwind_TEX<<<Dg, Db>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Advection3DD_apply_upwind_TEX<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (double)(1/_hx), (double)(1/_hy), (double)(1/_hz), u->xstride(), u->ystride(), u->shift_amount(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorFirstOrderUpwind<double>());
   }
   else if (interp_type == IT_SECOND_ORDER_CENTERED) {
-    Advection3DD_apply_upwind_TEX<<<Dg, Db>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
+    Advection3DD_apply_upwind_TEX<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&deriv_udt->at(0,0,0),&deriv_vdt->at(0,0,0),&deriv_wdt->at(0,0,0),
       (double)(1/_hx), (double)(1/_hy), (double)(1/_hz), u->xstride(), u->ystride(), u->shift_amount(),
       _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY, InterpolatorSecondOrderCentered<double>());
   }

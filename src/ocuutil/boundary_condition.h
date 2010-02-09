@@ -25,6 +25,7 @@ namespace ocu {
 
 enum BoundaryConditionType {
   BC_INVALID,
+  BC_NONE,
   BC_PERIODIC,
   BC_DIRICHELET,
   BC_NEUMANN,

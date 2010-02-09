@@ -119,7 +119,7 @@ bool reduce_with_operator(const ocu::Grid3DDevice<T> &grid, T &result, REDUCE re
   KernelWrapper wrapper;
 
   wrapper.PreKernel();
-  reduce_kernel<<<Dg,Db,smemsize>>>(&d_grid1d.at(0), grid.ny(), &grid.at(0,0,0), grid.xstride(), grid.ystride(), grid.nx(), grid.ny(), grid.nz(), reduce);
+  reduce_kernel<<<Dg,Db,smemsize,ThreadManager::get_compute_stream()>>>(&d_grid1d.at(0), grid.ny(), &grid.at(0,0,0), grid.xstride(), grid.ystride(), grid.nx(), grid.ny(), grid.nz(), reduce);
   if (!wrapper.PostKernel("reduce_kernel"))
     return false;
 

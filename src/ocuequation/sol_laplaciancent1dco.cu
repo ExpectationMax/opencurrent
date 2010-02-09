@@ -14,24 +14,3 @@
  *  limitations under the License.
  */
 
-#ifndef __OCU_UTIL_MEMORY_H__
-#define __OCU_UTIL_MEMORY_H__
-
-
-namespace ocu {
-
-enum MemoryType {
-  MEM_INVALID,
-  MEM_HOST,
-  MEM_DEVICE,
-  // zero-copied, mpi interop, write-combined, portable pinned, remote host, remote device, etc.
-};
-
-void *host_malloc(size_t bytes, bool pinned, bool write_combined = false);
-void host_free(void *, bool pinned_or_write_combined);
-
-} // end namespace
-
-
-#endif
-

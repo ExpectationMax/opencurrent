@@ -14,8 +14,9 @@
  *  limitations under the License.
  */
 
-#include "ocuequation/eqn_incompressns3d.h"
 #include "ocuutil/kernel_wrapper.h"
+#include "ocuutil/thread.h"
+#include "ocuequation/eqn_incompressns3d.h"
 
 template<typename T>
 __global__ void Eqn_IncompressibleNS3D_add_thermal_force(T *dvdt, T coefficient, const T *temperature,
@@ -71,7 +72,7 @@ Eqn_IncompressibleNS3D<T>::add_thermal_force()
   KernelWrapper wrapper;
   wrapper.PreKernel();
 
-  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db>>>(uvw, direction_mult * _gravity * _bouyancy, &_temp.at(0,0,0),
+  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(uvw, direction_mult * _gravity * _bouyancy, &_temp.at(0,0,0),
     _temp.xstride(), _temp.ystride(), _temp.stride(_vertical_direction), nx(), ny(), nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 

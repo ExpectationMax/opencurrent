@@ -15,7 +15,6 @@
 
 
 CUDA_ADD_LIBRARY(ocustorage 
-  grid1dhost.cpp
   grid1ddev.cu
   grid1dhost.cu
   grid1d.h
@@ -25,7 +24,6 @@ CUDA_ADD_LIBRARY(ocustorage
   grid2ddev.cu
   grid2dhost.cu
   grid2d.h
-  grid3dhost.cpp
   grid3ddev.cu
   grid3dhost.cu
   grid3d.h
@@ -39,6 +37,15 @@ CUDA_ADD_LIBRARY(ocustorage
   grid3dboundary.cu
   gridnetcdf.h
   gridnetcdf.cpp
+  region1d.h
+  region3d.h
+  coarray.h
+  coarray_internal.h
+  coarray.cu
+  barrier_exchange.cu
+  exchange_mempool.cu
+  transfer_q.cu
+  transfer_routines.cu
 ) 
 
 

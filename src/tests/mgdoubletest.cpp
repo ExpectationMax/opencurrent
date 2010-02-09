@@ -94,6 +94,19 @@ double init_rhs(Grid3DDeviceD &rhs, int nx, int ny, int nz, float hx, float hy, 
   }
 }
 
+// make test repeatable using psuedo-random hash
+// TODO: move this into util library
+float hash_seed(unsigned int seed) {
+  seed = (seed+0x7ed55d16) + (seed<<12);
+  seed = (seed^0xc761c23c) ^ (seed>>19);
+  seed = (seed+0x165667b1) + (seed<<5);
+  seed = (seed+0xd3a2646c) ^ (seed<<9);
+  seed = (seed+0xfd7046c5) + (seed<<3);
+  seed = (seed^0xb55a4f09) ^ (seed>>16);
+
+  return (seed + 1.0f) / 4294967296.0f;
+}
+
 void init_search_vector(Sol_MultigridPressure3DDeviceD &solver, int nx, int ny, int nz, bool init_random)
 {
   int i,j,k;
@@ -104,7 +117,8 @@ void init_search_vector(Sol_MultigridPressure3DDeviceD &solver, int nx, int ny, 
     for (i=0; i < nx; i++)
       for (j=0; j < ny; j++)
         for (k=0; k < nz; k++)
-          pinit.at(i,j,k) = .5 - (((double)rand()) / RAND_MAX);
+          pinit.at(i,j,k) = .5 - hash_seed(i*nz*ny+j*nz+nz);
+
     UNITTEST_ASSERT_TRUE(solver.pressure().copy_all_data(pinit));
   }
   else {
@@ -168,7 +182,14 @@ void run_isotropic_test(int nx, int ny, int nz, float hx, float hy, float hz, in
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
+
+  CPUTimer timer;
+  timer.start();
+
   UNITTEST_ASSERT_TRUE(solver.solve(residual,tol,16));
+  timer.stop();
+  global_timer_add_timing("solver", timer.elapsed_ms());
+
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
 
@@ -188,7 +209,12 @@ void run_all_dirichelet_test(int nx, int ny, int nz, float hx, float hy, float h
   init_search_vector(solver, nx, ny, nz, true); // init to random search vector
     
   double residual;
+  CPUTimer timer;
+  timer.start();
+
   UNITTEST_ASSERT_TRUE(solver.solve(residual,tol, 15));
+  timer.stop();
+  global_timer_add_timing("solver", timer.elapsed_ms());
 
   UNITTEST_ASSERT_EQUAL_FLOAT(residual, 0, tol);
 
@@ -213,7 +239,12 @@ void run_neumann_test(int nx, int ny, int nz, float hx, float hy, float hz, doub
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
+  CPUTimer timer;
+  timer.start();
+
   UNITTEST_ASSERT_TRUE(solver.solve(residual,tol, 15));
+  timer.stop();
+  global_timer_add_timing("solver", timer.elapsed_ms());
 
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
@@ -231,11 +262,12 @@ void run_all_periodic_test(int nx, int ny, int nz, float hx, float hy, float hz,
   init_search_vector(solver, nx, ny, nz, false); // init to zero
     
   double residual;
-    CPUTimer timer;
+  CPUTimer timer;
   timer.start();
-  UNITTEST_ASSERT_TRUE(solver.solve(residual,tol, 15));
+  UNITTEST_ASSERT_TRUE(solver.solve(residual,tol, 20));
   timer.stop();
-  printf("%f sec\n", timer.elapsed_sec());
+  global_timer_add_timing("solver", timer.elapsed_ms());
+
   UNITTEST_ASSERT_EQUAL_DOUBLE(residual, 0, tol);
 }
 
@@ -247,12 +279,12 @@ void run_all_bcs(int nx, int ny, int nz, float hx, float hy, float hz, float tol
   run_isotropic_test(nx, ny, nz, hx, hy, hz, 0, 1, tol, sym);
   run_isotropic_test(nx, ny, nz, hx, hy, hz, 1, -1, tol, sym);
   run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, -1, tol, sym);
-  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol, sym);
+  run_isotropic_test(nx, ny, nz, hx, hy, hz, 2, .321, tol, sym); 
   run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 0, tol, sym);
   run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, .5, tol, sym);
   run_all_dirichelet_test(nx, ny, nz, hx, hy, hz, 1, tol, sym);
   run_all_periodic_test(nx, ny, nz, hx, hy, hz, tol, sym);
-  run_neumann_test(nx, ny, nz, hx, hy, hz, tol, sym);
+  run_neumann_test(nx, ny, nz, hx, hy, hz, tol, sym); 
 }
 
 void run()
@@ -271,6 +303,8 @@ void run()
   run_all_bcs(128, 64, 128, 4.0 / 128, 4.0 / 64, 4.0 / 128, 1e-8, true);
   run_all_bcs(128, 128, 64, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, true);
   run_all_bcs(96, 128, 80, 4.0 / 128, 4.0 / 128, 4.0 / 64, 1e-8, true);
+
+  global_timer_print();
 }
 
 

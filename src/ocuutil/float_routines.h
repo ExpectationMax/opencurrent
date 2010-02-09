@@ -36,7 +36,7 @@ inline bool check_float(float f)
 #ifdef __CUDACC__
   return __finite(f);
 #elif defined(_WIN32)
-  return _finite(f);
+  return !!_finite(f);
 #else
   return finite(f);
 #endif

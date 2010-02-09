@@ -15,7 +15,7 @@
  */
 
 #include <cstdio>
-#include "cuda.h"
+#include "ocuutil/thread.h"
 #include "ocuequation/sol_laplaciancent1d.h"
 
 //***********************************************************************************
@@ -82,7 +82,7 @@ Sol_LaplacianCentered1DDevice::apply_boundary_conditions()
   dim3 Dg(1);
   dim3 Db(1);
   
-  Sol_Laplacian1DCentered_apply_boundary_conditions<<<Db, Db>>>(&density.at(0), left, right, nx(), h());
+  Sol_Laplacian1DCentered_apply_boundary_conditions<<<Db, Db, 0, ThreadManager::get_compute_stream()>>>(&density.at(0), left, right, nx(), h());
   cudaError_t er = cudaGetLastError();
   if (er != (unsigned int) CUDA_SUCCESS) {
     printf("[ERROR] Sol_LaplacianCentered1DDevice::apply_boundary_conditions - CUDA error \"%s\"\n", cudaGetErrorString(er));
@@ -102,7 +102,43 @@ Sol_LaplacianCentered1DDevice::solve()
   dim3 Db(256);
 
   PreKernel();
-  Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db>>>(inv_h2, &deriv_densitydt.at(0), &density.at(0), nx());
+  Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(inv_h2, &deriv_densitydt.at(0), &density.at(0), nx());
+  PostKernel("Sol_LaplacianCentered1DDevice::solve");
+
+  return !any_error();
+}
+
+
+
+bool 
+Sol_LaplacianCentered1DDeviceNew::initialize_storage(int nx, Grid1DDeviceF *density_val)
+{
+  density = density_val;
+  if (density->nx() != nx) {
+    printf("[ERROR] Sol_LaplacianCentered1DDeviceNew::initialize_storage - density width %d != %d\n", density->nx(), nx);
+    return false;
+  }
+
+  deriv_densitydt.init(nx, 1); 
+  _nx = nx;
+
+  return true;
+}
+
+
+bool 
+Sol_LaplacianCentered1DDeviceNew::solve()
+{
+  // centered differencing
+  float inv_h2 = coefficient() / (h() * h());
+
+  // launch nx+1 threads
+  dim3 Dg((nx()+1+255) / 256);
+  dim3 Db(256);
+
+  PreKernel();
+  Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(inv_h2, &deriv_densitydt.at(0), &density->at(0), nx());
+//  Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db>>>(inv_h2, &deriv_densitydt.at(0), &density->at(0), nx());
   PostKernel("Sol_LaplacianCentered1DDevice::solve");
 
   return !any_error();

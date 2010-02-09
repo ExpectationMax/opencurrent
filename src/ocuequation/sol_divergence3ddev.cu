@@ -15,6 +15,7 @@
  */
 
 #include "ocuutil/float_routines.h"
+#include "ocuutil/thread.h"
 #include "ocustorage/grid3dops.h"
 #include "ocuequation/sol_divergence3d.h"
 
@@ -79,7 +80,7 @@ Sol_Divergence3DDevice<T>::solve()
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
   PreKernel();
-  Sol_Divergence3DDevice_calculate_divergence<<<Dg, Db>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0), &divergence->at(0,0,0),
+  Sol_Divergence3DDevice_calculate_divergence<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u->at(0,0,0),&v->at(0,0,0),&w->at(0,0,0), &divergence->at(0,0,0),
     (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), 
     u->xstride(), u->ystride(), 
     _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY);

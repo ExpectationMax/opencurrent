@@ -41,7 +41,11 @@ CUDA_ADD_EXECUTABLE(utest
 	pcgtest.cpp
 	rayleigh.cpp
 	rayleighnoslip.cpp
-	rayleightiming.cpp)
+	rayleightiming.cpp
+	diffusion1dmultitest.cu
+	diffusion3dmultitest.cu
+	coarraytest.cu
+	mgmultitest.cu)
 
 ADD_TEST(Diffusion1DTest ${EXECUTABLE_OUTPUT_PATH}/utest Diffusion1DTest)
 ADD_TEST(Diffusion3DTest ${EXECUTABLE_OUTPUT_PATH}/utest Diffusion3DTest)
@@ -61,6 +65,12 @@ ADD_TEST(SamplingTest ${EXECUTABLE_OUTPUT_PATH}/utest SamplingTest)
 ADD_TEST(NSTest ${EXECUTABLE_OUTPUT_PATH}/utest NSTest)
 ADD_TEST(LockExTest ${EXECUTABLE_OUTPUT_PATH}/utest LockExTest LockExDoubleTest)
 ADD_TEST(PCGTest ${EXECUTABLE_OUTPUT_PATH}/utest PCGDoubleTest)
+ADD_TEST(Diffusion1DMultiTest ${EXECUTABLE_OUTPUT_PATH}/utest -multi Diffusion1DMultiTest)
+ADD_TEST(Diffusion3DMultiTest ${EXECUTABLE_OUTPUT_PATH}/utest -multi Diffusion3DMultiTest)
+ADD_TEST(CoArray1DTest ${EXECUTABLE_OUTPUT_PATH}/utest -repeat 10 -multi CoArray1DTest)
+ADD_TEST(CoArray3DTest ${EXECUTABLE_OUTPUT_PATH}/utest -repeat 10 -multi CoArray3DTest DoubleTransferTest)
+ADD_TEST(MultiReduceTest ${EXECUTABLE_OUTPUT_PATH}/utest -multi MultiReduceTest)
+ADD_TEST(MultigridMultiTest ${EXECUTABLE_OUTPUT_PATH}/utest -multi MultigridMultiTest)
 
 
 TARGET_LINK_LIBRARIES(utest ocuequation ocustorage ocuutil ${NetCDF_LIBRARY})
