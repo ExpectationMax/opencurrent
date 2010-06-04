@@ -92,9 +92,41 @@ public:
   bool initialize_storage(int nx_val, int ny_val, int nz_val, double hx_val, double hy_val, double hz_val, Grid3DDevice<T> *u, Grid3DDevice<T> *v, Grid3DDevice<T> *w);
 };
 
+template<typename T>
+class Sol_ProjectDivergence3DDeviceCo : public Sol_ProjectDivergence3DDeviceStorage<T> {
+
+  int _u_negx_hdl;
+  int _v_negx_hdl;
+  int _w_negx_hdl;
+  int _u_posx_hdl;
+  int _v_posx_hdl;
+  int _w_posx_hdl;
+
+public:
+
+  //**** PUBLIC STATE ****
+  Grid3DDeviceCo<T> *co_u, *co_v, *co_w; // updated in place
+  BoundaryConditionSet local_bc;
+
+  Sol_MultigridPressure3DDeviceCo<T> pressure_solver;
+  Sol_Divergence3DDevice<T> divergence_solver;
+  Sol_Gradient3DDevice<T> gradient_solver;
+
+  //**** MANAGERS ****
+  Sol_ProjectDivergence3DDeviceCo(const char *name);
+  ~Sol_ProjectDivergence3DDeviceCo();
+
+  //**** PUBLIC INTERFACE ****
+  bool solve(double tolerance=1e-5);
+  bool solve_divergence_only();
+
+  bool initialize_storage(int nx_val, int ny_val, int nz_val, double hx_val, double hy_val, double hz_val, Grid3DDeviceCo<T> *u, Grid3DDeviceCo<T> *v, Grid3DDeviceCo<T> *w);
+};
 
 typedef Sol_ProjectDivergence3DDevice<float> Sol_ProjectDivergence3DDeviceF;
 typedef Sol_ProjectDivergence3DDevice<double> Sol_ProjectDivergence3DDeviceD;
+typedef Sol_ProjectDivergence3DDeviceCo<float> Sol_ProjectDivergence3DDeviceCoF;
+typedef Sol_ProjectDivergence3DDeviceCo<double> Sol_ProjectDivergence3DDeviceCoD;
 
 
 

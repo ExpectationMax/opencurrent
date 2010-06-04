@@ -29,7 +29,7 @@ Eqn_Diffusion3DBase<T>::Eqn_Diffusion3DBase()
 
 
 template<typename T>
-bool Eqn_Diffusion3DBase<T>::set_parameters(const Eqn_Diffusion3DBaseParams<T> &params)
+bool Eqn_Diffusion3DBase<T>::set_base_parameters(const Eqn_Diffusion3DBaseParams<T> &params)
 {
   _nx = params.nx;
   _ny = params.ny;
@@ -39,7 +39,7 @@ bool Eqn_Diffusion3DBase<T>::set_parameters(const Eqn_Diffusion3DBaseParams<T> &
   _hz = params.hz;
   
   if (!check_float(_hx) || !check_float(_hy) || !check_float(_hz) || _hx <= 0 || _hy <= 0 || _hz <= 0) {
-    printf("[ERROR] Eqn_Diffusion3DBase::set_parameters - illegal hx, hy, hz values (%f %f %f)\n", _hx, _hy, _hz);
+    printf("[ERROR] Eqn_Diffusion3DBase::set_base_parameters - illegal hx, hy, hz values (%f %f %f)\n", _hx, _hy, _hz);
     return false;
   }
 
@@ -55,7 +55,7 @@ Eqn_Diffusion3D<T>::Eqn_Diffusion3D()
 template<typename T>
 bool Eqn_Diffusion3D<T>::set_parameters(const Eqn_Diffusion3DParams<T> &params)
 {
-  if (!Eqn_Diffusion3DBase<T>::set_parameters(params)) {
+  if (!Eqn_Diffusion3DBase<T>::set_base_parameters(params)) {
     return false;
   }
 
@@ -141,7 +141,7 @@ Eqn_Diffusion3DCo<T>::~Eqn_Diffusion3DCo()
 template<typename T>
 bool Eqn_Diffusion3DCo<T>::set_parameters(const Eqn_Diffusion3DCoParams<T> &params)
 {
-  if (!Eqn_Diffusion3DBase<T>::set_parameters(params)) {
+  if (!Eqn_Diffusion3DBase<T>::set_base_parameters(params)) {
     return false;
   }
 
