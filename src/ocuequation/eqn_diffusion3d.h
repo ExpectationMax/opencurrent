@@ -54,7 +54,7 @@ protected:
 public:
 
 
-  bool set_parameters(const Eqn_Diffusion3DBaseParams<T> &params);
+  bool set_base_parameters(const Eqn_Diffusion3DBaseParams<T> &params);
 
   int nx() const { return _nx; }
   int ny() const { return _ny; }

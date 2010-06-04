@@ -203,6 +203,12 @@ Sol_MultigridPressure3DBase::do_fmg(double tolerance, int max_iter, double &resu
 
           // if we're below tolerance, or we're no longer converging, bail out
           if (residual < tolerance) {
+
+            // last time through, we need to apply boundary condition to u[0], since we just relaxed (above), but haven't propagated changes to ghost cells.
+            // in the case we are not finished, by the time we get back to level 0 (via coarsening & then prolongation), ghost cells would be filled in.
+            // but since we are bailing here, we need to explicitly make ghost cells up-to-date with u.
+            apply_boundary_conditions(0);
+
             timer.stop();
             //printf("[ELAPSED] Sol_MultigridPressure3DBase::do_fmg - converged in %fms\n", timer.elapsed_ms());
             printf("[INFO] Sol_MultigridPressure3DBase::do_fmg - error after %d iterations: L2 = %f (%fx), Linf = %f (%fx)\n", i_cyc, result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
@@ -287,6 +293,11 @@ Sol_MultigridPressure3DBase::do_vcycle(double tolerance, int max_iter, double &r
 
         // if we're below tolerance, or we're no longer converging, bail out
         if (residual < tolerance) {
+          // last time through, we need to apply boundary condition to u[0], since we just relaxed (above), but haven't propagated changes to ghost cells.
+          // in the case we are not finished, by the time we get back to level 0 (via coarsening & then prolongation), ghost cells would be filled in.
+          // but since we are bailing here, we need to explicitly make ghost cells up-to-date with u.
+          apply_boundary_conditions(0);
+
           //printf("[INFO] Sol_MultigridPressure3DBase::do_vcycle - error after %d iterations: L2 = %f (%fx), Linf = %f (%fx)\n", i_cyc, result_l2, orig_l2 / result_l2, result_linf, orig_linf / result_linf);
           return !any_error();
         }
