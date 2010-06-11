@@ -123,9 +123,9 @@ Eqn_IncompressibleNS3D<T>::add_thermal_force()
   // apply thermal force by adding -gkT to dvdt (let g = -1, k = 1, so this is just dvdt += T)
   //_advection_solver.deriv_vdt.linear_combination((T)1.0, _advection_solver.deriv_vdt, (T)1.0, _thermal_solver.phi);
 
-  int tnx = nz();
-  int tny = ny();
-  int tnz = nx();
+  int tnx = this->nz();
+  int tny = this->ny();
+  int tnz = this->nx();
 
   int threadsInX = 16;
   int threadsInY = 2;
@@ -138,19 +138,19 @@ Eqn_IncompressibleNS3D<T>::add_thermal_force()
   dim3 Dg = dim3(blocksInX, blocksInY*blocksInZ);
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
-  T direction_mult = _vertical_direction & DIR_NEGATIVE_FLAG ? 1 : -1;
-  T *uvw = (_vertical_direction & DIR_XAXIS_FLAG) ? &_deriv_udt.at(0,0,0) :
-           (_vertical_direction & DIR_YAXIS_FLAG) ? &_deriv_vdt.at(0,0,0) : &_deriv_wdt.at(0,0,0);
+  T direction_mult = this->_vertical_direction & DIR_NEGATIVE_FLAG ? 1 : -1;
+  T *uvw = (this->_vertical_direction & DIR_XAXIS_FLAG) ? &_deriv_udt.at(0,0,0) :
+           (this->_vertical_direction & DIR_YAXIS_FLAG) ? &_deriv_vdt.at(0,0,0) : &_deriv_wdt.at(0,0,0);
 
   KernelWrapper wrapper;
   wrapper.PreKernel();
 
-  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(uvw, direction_mult * _gravity * _bouyancy, &_temp.at(0,0,0),
-    _temp.xstride(), _temp.ystride(), _temp.stride(_vertical_direction), nx(), ny(), nz(), 
+  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(uvw, direction_mult * this->_gravity * this->_bouyancy, &_temp.at(0,0,0),
+    _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
   if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
-    add_error();
+    this->add_error();
 
 }
 
@@ -214,22 +214,22 @@ Eqn_IncompressibleNS3D<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T> 
   _advection_solver.interp_type = params.advection_scheme;
   _thermal_solver.interp_type = params.advection_scheme;
 
-  if (!_thermal_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w, &_temp, &_deriv_tempdt)) {
+  if (!_thermal_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w, &_temp, &_deriv_tempdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _thermal_solver initialization\n");
     return false;  
   }
 
-  if (!_advection_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w, &_deriv_udt, &_deriv_vdt, &_deriv_wdt)) {
+  if (!_advection_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w, &_deriv_udt, &_deriv_vdt, &_deriv_wdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _advection_solver initialization\n");
     return false;  
   }
 
-  if (!_projection_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w)) {
+  if (!_projection_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _projection_solver initialization\n");
     return false;  
   }
 
-  if (!_thermal_diffusion.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_temp, &_deriv_tempdt)) {
+  if (!_thermal_diffusion.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_temp, &_deriv_tempdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _thermal_diffusion initialization\n");
     return false;
   }
@@ -241,7 +241,7 @@ Eqn_IncompressibleNS3D<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T> 
 
   _thermal_diffusion.coefficient = params.thermal_diffusion;
 
-  if (!_u_diffusion.initialize_storage(_nx+1, _ny, _nz, _hx, _hy, _hz, &_u, &_deriv_udt)) {
+  if (!_u_diffusion.initialize_storage(this->_nx+1, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_deriv_udt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _u_diffusion initialization\n");
     return false;
   }
@@ -252,24 +252,24 @@ Eqn_IncompressibleNS3D<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T> 
   }
   _u_diffusion.coefficient = params.viscosity;
 
-  if (!_v_diffusion.initialize_storage(_nx, _ny+1, _nz, _hx, _hy, _hz, &_v, &_deriv_vdt)) {
+  if (!_v_diffusion.initialize_storage(this->_nx, this->_ny+1, this->_nz, this->_hx, this->_hy, this->_hz, &_v, &_deriv_vdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _v_diffusion initialization\n");
     return false;
   }
   _v_diffusion.coefficient = params.viscosity;
 
-  if (!_w_diffusion.initialize_storage(_nx, _ny, _nz+1, _hx, _hy, _hz, &_w, &_deriv_wdt)) {
+  if (!_w_diffusion.initialize_storage(this->_nx, this->_ny, this->_nz+1, this->_hx, this->_hy, this->_hz, &_w, &_deriv_wdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on _w_diffusion initialization\n");
     return false;
   }
   _w_diffusion.coefficient = params.viscosity;
 
-  if (!apply_3d_mac_boundary_conditions_level1(_u, _v, _w, params.flow_bc, _hx, _hy, _hz)) {
+  if (!apply_3d_mac_boundary_conditions_level1(_u, _v, _w, params.flow_bc, this->_hx, this->_hy, this->_hz)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on enforcing flow boundary conditions\n");
     return false;  
   }
 
-  if (!apply_3d_boundary_conditions_level1(_temp, _thermalbc, _hx, _hy, _hz)) {
+  if (!apply_3d_boundary_conditions_level1(_temp, this->_thermalbc, this->_hx, this->_hy, this->_hz)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on enforcing thermal boundary conditions\n");
     return false;  
   }
@@ -305,17 +305,17 @@ double Eqn_IncompressibleNS3D<T>::get_max_stable_timestep() const
   _u.reduce_maxabs(max_u);
   _v.reduce_maxabs(max_v);
   _w.reduce_maxabs(max_w);
-  double ut = hx() / max_u;
-  double vt = hy() / max_v;
-  double wt = hz() / max_w;
+  double ut = this->hx() / max_u;
+  double vt = this->hy() / max_v;
+  double wt = this->hz() / max_w;
 
   if (!check_float(ut)) ut = 1e10;
   if (!check_float(vt)) vt = 1e10;
   if (!check_float(wt)) wt = 1e10;
 
-  double step = _cfl_factor * min3(ut, vt, wt);
+  double step = this->_cfl_factor * min3(ut, vt, wt);
 
-  double minh = min3(hx(), hy(), hz());
+  double minh = min3(this->hx(), this->hy(), this->hz());
 
   if (thermal_diffusion_coefficient() > 0)
     step = std::min(step, (minh * minh) / (6 * thermal_diffusion_coefficient()));
@@ -331,8 +331,8 @@ double Eqn_IncompressibleNS3D<T>::get_max_stable_timestep() const
 template<typename T>
 bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
 {
-  clear_error();
-  num_steps++;
+  this->clear_error();
+  this->num_steps++;
 
   // update dudt
   check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
@@ -352,10 +352,10 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
     check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
   }
 
-  T ab_coeff = -dt*dt / (2 * _lastdt);
+  T ab_coeff = -dt*dt / (2 * this->_lastdt);
 
   // advance T 
-  if (_time_step == TS_ADAMS_BASHFORD2 && _lastdt > 0) {
+  if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
     check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
     check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
   } 
@@ -363,10 +363,10 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
     check_ok(_temp.linear_combination((T)1.0, _temp, (T)dt, _deriv_tempdt));
   }
 
-  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, _thermalbc, _hx, _hy, _hz));
+  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_thermalbc, this->_hx, this->_hy, this->_hz));
 
   // advance u,v,w
-  if (_time_step == TS_ADAMS_BASHFORD2 && _lastdt > 0) {
+  if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
     check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
     check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
 
@@ -384,8 +384,8 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
   }
 
   // copy state for AB2
-  if (_time_step == TS_ADAMS_BASHFORD2) {
-    _lastdt = dt;
+  if (this->_time_step == TS_ADAMS_BASHFORD2) {
+    this->_lastdt = dt;
     _last_deriv_tempdt.copy_all_data(_deriv_tempdt);
     _last_deriv_udt.copy_all_data(_deriv_udt);
     _last_deriv_vdt.copy_all_data(_deriv_vdt);
@@ -393,9 +393,9 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
   }
 
   // enforce incompressibility - this enforces bc's before and after projection
-  check_ok(_projection_solver.solve(_max_divergence));
+  check_ok(_projection_solver.solve(this->_max_divergence));
 
-  return !any_error();
+  return !this->any_error();
 }
 
 
@@ -516,22 +516,22 @@ Eqn_IncompressibleNS3DCo<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T
   _advection_solver.interp_type = params.advection_scheme;
   _thermal_solver.interp_type = params.advection_scheme;
 
-  if (!_thermal_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w, &_temp, &_deriv_tempdt)) {
+  if (!_thermal_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w, &_temp, &_deriv_tempdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _thermal_solver initialization\n");
     return false;  
   }
 
-  if (!_advection_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w, &_deriv_udt, &_deriv_vdt, &_deriv_wdt)) {
+  if (!_advection_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w, &_deriv_udt, &_deriv_vdt, &_deriv_wdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _advection_solver initialization\n");
     return false;  
   }
 
-  if (!_projection_solver.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_u, &_v, &_w)) {
+  if (!_projection_solver.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_v, &_w)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _projection_solver initialization\n");
     return false;  
   }
 
-  if (!_thermal_diffusion.initialize_storage(_nx, _ny, _nz, _hx, _hy, _hz, &_temp, &_deriv_tempdt)) {
+  if (!_thermal_diffusion.initialize_storage(this->_nx, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_temp, &_deriv_tempdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _thermal_diffusion initialization\n");
     return false;
   }
@@ -543,7 +543,7 @@ Eqn_IncompressibleNS3DCo<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T
 
   _thermal_diffusion.coefficient = params.thermal_diffusion;
 
-  if (!_u_diffusion.initialize_storage(_nx+1, _ny, _nz, _hx, _hy, _hz, &_u, &_deriv_udt)) {
+  if (!_u_diffusion.initialize_storage(this->_nx+1, this->_ny, this->_nz, this->_hx, this->_hy, this->_hz, &_u, &_deriv_udt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _u_diffusion initialization\n");
     return false;
   }
@@ -554,13 +554,13 @@ Eqn_IncompressibleNS3DCo<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T
   }
   _u_diffusion.coefficient = params.viscosity;
 
-  if (!_v_diffusion.initialize_storage(_nx, _ny+1, _nz, _hx, _hy, _hz, &_v, &_deriv_vdt)) {
+  if (!_v_diffusion.initialize_storage(this->_nx, this->_ny+1, this->_nz, this->_hx, this->_hy, this->_hz, &_v, &_deriv_vdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _v_diffusion initialization\n");
     return false;
   }
   _v_diffusion.coefficient = params.viscosity;
 
-  if (!_w_diffusion.initialize_storage(_nx, _ny, _nz+1, _hx, _hy, _hz, &_w, &_deriv_wdt)) {
+  if (!_w_diffusion.initialize_storage(this->_nx, this->_ny, this->_nz+1, this->_hx, this->_hy, this->_hz, &_w, &_deriv_wdt)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on _w_diffusion initialization\n");
     return false;
   }
@@ -665,13 +665,13 @@ Eqn_IncompressibleNS3DCo<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T
   }  
 
   do_halo_exchange_uvw();
-  if (!apply_3d_mac_boundary_conditions_level1(_u, _v, _w, _local_bc, _hx, _hy, _hz)) {
+  if (!apply_3d_mac_boundary_conditions_level1(_u, _v, _w, _local_bc, this->_hx, this->_hy, this->_hz)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on enforcing flow boundary conditions\n");
     return false;  
   }
 
   do_halo_exchange_t();
-  if (!apply_3d_boundary_conditions_level1(_temp, _local_thermalbc, _hx, _hy, _hz)) {
+  if (!apply_3d_boundary_conditions_level1(_temp, _local_thermalbc, this->_hx, this->_hy, this->_hz)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on enforcing thermal boundary conditions\n");
     return false;  
   }
@@ -710,22 +710,22 @@ double Eqn_IncompressibleNS3DCo<T>::get_max_stable_timestep() const
   _u.co_reduce_maxabs(max_u);
   _v.co_reduce_maxabs(max_v);
   _w.co_reduce_maxabs(max_w);
-  double ut = hx() / max_u;
-  double vt = hy() / max_v;
-  double wt = hz() / max_w;
+  double ut = this->hx() / max_u;
+  double vt = this->hy() / max_v;
+  double wt = this->hz() / max_w;
 
   if (!check_float(ut)) ut = 1e10;
   if (!check_float(vt)) vt = 1e10;
   if (!check_float(wt)) wt = 1e10;
 
-  double step = _cfl_factor * min3(ut, vt, wt);
+  double step = this->_cfl_factor * min3(ut, vt, wt);
 
-  double minh = min3(hx(), hy(), hz());
+  double minh = min3(this->hx(), this->hy(), this->hz());
 
   if (thermal_diffusion_coefficient() > 0)
-    step = std::min(step, (minh * minh) / (6 * thermal_diffusion_coefficient()));
+    step = std::min(step, (minh * minh) / (6 * this->thermal_diffusion_coefficient()));
   if (viscosity_coefficient() > 0)
-    step = std::min(step, (minh * minh) / (6 * viscosity_coefficient()));
+    step = std::min(step, (minh * minh) / (6 * this->viscosity_coefficient()));
 
   printf("Eqn_IncompressibleNS3DCo<T>::get_max_stable_timestep - return %f (%f %f %f)\n", step, ut, vt, wt);
 
@@ -739,9 +739,9 @@ Eqn_IncompressibleNS3DCo<T>::add_thermal_force()
   // apply thermal force by adding -gkT to dvdt (let g = -1, k = 1, so this is just dvdt += T)
   //_advection_solver.deriv_vdt.linear_combination((T)1.0, _advection_solver.deriv_vdt, (T)1.0, _thermal_solver.phi);
 
-  int tnx = nz();
-  int tny = ny();
-  int tnz = nx();
+  int tnx = this->nz();
+  int tny = this->ny();
+  int tnz = this->nx();
 
   int threadsInX = 16;
   int threadsInY = 2;
@@ -754,27 +754,27 @@ Eqn_IncompressibleNS3DCo<T>::add_thermal_force()
   dim3 Dg = dim3(blocksInX, blocksInY*blocksInZ);
   dim3 Db = dim3(threadsInX, threadsInY, threadsInZ);
 
-  T direction_mult = _vertical_direction & DIR_NEGATIVE_FLAG ? 1 : -1;
-  T *uvw = (_vertical_direction & DIR_XAXIS_FLAG) ? &_deriv_udt.at(0,0,0) :
-           (_vertical_direction & DIR_YAXIS_FLAG) ? &_deriv_vdt.at(0,0,0) : &_deriv_wdt.at(0,0,0);
+  T direction_mult = this->_vertical_direction & DIR_NEGATIVE_FLAG ? 1 : -1;
+  T *uvw = (this->_vertical_direction & DIR_XAXIS_FLAG) ? &_deriv_udt.at(0,0,0) :
+           (this->_vertical_direction & DIR_YAXIS_FLAG) ? &_deriv_vdt.at(0,0,0) : &_deriv_wdt.at(0,0,0);
 
   KernelWrapper wrapper;
   wrapper.PreKernel();
 
-  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(uvw, direction_mult * _gravity * _bouyancy, &_temp.at(0,0,0),
-    _temp.xstride(), _temp.ystride(), _temp.stride(_vertical_direction), nx(), ny(), nz(), 
+  Eqn_IncompressibleNS3D_add_thermal_force<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(uvw, direction_mult * this->_gravity * this->_bouyancy, &_temp.at(0,0,0),
+    _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
   if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
-    add_error();
+    this->add_error();
 
 }
 
 template<typename T>
 bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
 {
-  clear_error();
-  num_steps++;
+  this->clear_error();
+  this->num_steps++;
 
   // update dudt
   check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
@@ -795,10 +795,10 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
     check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
   }
 
-  T ab_coeff = -dt*dt / (2 * _lastdt);
+  T ab_coeff = -dt*dt / (2 * this->_lastdt);
 
   // advance T 
-  if (_time_step == TS_ADAMS_BASHFORD2 && _lastdt > 0) {
+  if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
     check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
     check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
   } 
@@ -807,10 +807,10 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
   }
 
   do_halo_exchange_t();
-  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, _local_thermalbc, _hx, _hy, _hz));
+  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_local_thermalbc, this->_hx, this->_hy, this->_hz));
 
   // advance u,v,w
-  if (_time_step == TS_ADAMS_BASHFORD2 && _lastdt > 0) {
+  if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
     check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
     check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
 
@@ -828,8 +828,8 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
   }
 
   // copy state for AB2
-  if (_time_step == TS_ADAMS_BASHFORD2) {
-    _lastdt = dt;
+  if (this->_time_step == TS_ADAMS_BASHFORD2) {
+    this->_lastdt = dt;
     _last_deriv_tempdt.copy_all_data(_deriv_tempdt);
     _last_deriv_udt.copy_all_data(_deriv_udt);
     _last_deriv_vdt.copy_all_data(_deriv_vdt);
@@ -837,9 +837,9 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
   }
 
   // enforce incompressibility - this enforces bc's before and after projection
-  check_ok(_projection_solver.solve(_max_divergence));
+  check_ok(_projection_solver.solve(this->_max_divergence));
 
-  return !any_error();
+  return !this->any_error();
 }
 
 

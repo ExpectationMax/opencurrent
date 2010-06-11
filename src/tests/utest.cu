@@ -20,9 +20,9 @@
 void do_error() {
 
 #ifdef OCU_OMP
-  const char *OMP = "[DISABLED] ";
-#else
   const char *OMP = "";
+#else
+  const char *OMP = "[DISABLED] ";
 #endif
 
   printf("utest [option] [test1] [test2] ...\n");
