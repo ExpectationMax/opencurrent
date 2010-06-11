@@ -19,12 +19,18 @@
 
 void do_error() {
 
+#ifdef OCU_OMP
+  const char *OMP = "[DISABLED] ";
+#else
+  const char *OMP = "";
+#endif
+
   printf("utest [option] [test1] [test2] ...\n");
   printf("Options are:\n");
   printf(" -gpu N     Run on the numbered GPU.  Can also set via env var OCU_UTEST_GPU.  Default value is 0.\n");
   printf(" -help      Print this message\n");
-  printf(" -multi     Run in multigpu mode.  Only multi-gpu-enabled tests will run.\n");
-  printf(" -numgpus N Set GPU count for multi gpu mode.  Can also set via env var OCU_UTEST_MULTI.  Default value is 2.\n");
+  printf(" -multi     %sRun in multigpu mode.  Only multi-gpu-enabled tests will run.\n", OMP );
+  printf(" -numgpus N %sSet GPU count for multi gpu mode.  Can also set via env var OCU_UTEST_MULTI.  Default value is 2.\n", OMP);
   printf(" -repeat N  Repeat all tests N times\n");
   printf("\n");
   printf("Current tests are:\n");
@@ -60,6 +66,10 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(argv[cur_arg], "-numgpus")==0) {
+#ifndef OCU_OMP
+      printf("[ERROR] -numgpus option invalid when compiled with OCU_OMP_ENABLED FALSE");
+      do_error();
+#else
       cur_arg++;
       unprocessed_args--;
 
@@ -67,6 +77,7 @@ int main(int argc, char **argv)
         num_gpus = atoi(argv[cur_arg]);
       }
       else do_error();
+#endif
     }
 
     if (strcmp(argv[cur_arg], "-repeat")==0) {
@@ -80,7 +91,12 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(argv[cur_arg], "-multi")==0) {
+#ifndef OCU_OMP
+      printf("[ERROR] -multi option invalid when compiled with OCU_OMP_ENABLED FALSE");
+      do_error();
+#else
       do_multi = true;
+#endif
     }
 
     if (strcmp(argv[cur_arg], "-help")==0) {
@@ -94,6 +110,10 @@ int main(int argc, char **argv)
   UnitTestDriver::s_driver().set_multi(do_multi);
 
   if (do_multi) {
+
+#ifndef OCU_OMP
+    printf("[ERROR] Cannot run in multi mode when compiled with OCU_OMP_ENABLED FALSE\n");
+#else
 
     // start n threads, init all multithreading stuff, etc.
     printf("[INFO] Running in multi-GPU mode with %d devices\n", num_gpus);
@@ -138,7 +158,7 @@ int main(int argc, char **argv)
         }
       }
     }
-
+#endif
   }
   else {
 

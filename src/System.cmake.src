@@ -49,6 +49,10 @@
 # 	The library will compile either way, it will just not be able to use some of the
 # 	newer features found in NetCDF4 like file compression. 
 #
+# OCU_OMP_ENABLED
+#       Whether to enable multi-gpu support via OpenMP pragmas.  if this is set to false,
+#       multigpu support will not be compiled.
+#
 # Variables from the FindCUDA module:
 #
 # CUDA_TOOLKIT_ROOT_DIR
@@ -77,6 +81,7 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
   SET(CUDA_TOOLKIT_ROOT_DIR "C:/CUDA")
   SET(OCU_NETCDF_ENABLED TRUE)
   SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
+  SET(OCU_OMP_ENABLED TRUE)
 
 # Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths
 #  SET(NetCDF_INCLUDE_DIR "C:/Program Files/Microsoft Visual Studio 8/VC/include")
@@ -91,6 +96,7 @@ else()
   SET(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda/")
   SET(OCU_NETCDF_ENABLED TRUE)
   SET(OCU_NETCDF4_SUPPORT_ENABLED TRUE)
+  SET(OCU_OMP_ENABLED TRUE)
 
 # Uncomment to hard-code a location, otherwise CMake will search for it in the normal paths
 #  SET(NetCDF_INCLUDE_DIR "/usr/local/include/")

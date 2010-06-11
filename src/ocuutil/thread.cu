@@ -42,7 +42,14 @@ ThreadManager::~ThreadManager()
 
 bool ThreadManager::_initialize(int num_images_val)
 {
+  if (num_images_val > OCU_MAX_IMAGES) {
+    printf("[ERROR] ThreadManager::_initialize - cannot initialize %d threads, maximum value is %d\n", num_images_val, OCU_MAX_IMAGES);
+    return false;
+  }
+
+#ifdef OCU_OMP
   omp_set_num_threads(num_images_val);
+#endif
 
   _num_images = num_images_val;
   _valid = true;
@@ -80,7 +87,11 @@ bool ThreadManager::_initialize_image(int gpu_id)
 
 int ThreadManager::this_image()
 {
+#ifdef OCU_OMP
   return omp_get_thread_num();
+#else
+  return 0;
+#endif
 }
 
 int ThreadManager::num_images()
@@ -90,9 +101,13 @@ int ThreadManager::num_images()
 
 void ThreadManager::barrier()
 {
+#ifdef OCU_OMP
+
 #pragma omp barrier
   {
   }
+
+#endif
 }
 
 void ThreadManager::_compute_fence()

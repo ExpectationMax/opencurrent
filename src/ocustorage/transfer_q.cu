@@ -23,7 +23,9 @@ namespace ocu {
 void 
 TransferRequestQ::process1d() 
 {
+#ifdef OCU_OMP
   omp_set_lock(&_lock);
+#endif
 
   for (int i=0; i < _q1d.size(); i++) {
     TransferRequest1D d = _q1d[i];
@@ -42,13 +44,17 @@ TransferRequestQ::process1d()
   }
 
   _q1d.clear();
+#ifdef OCU_OMP
   omp_unset_lock(&_lock);
+#endif
 }
 
 void 
 TransferRequestQ::process3d() 
 {
+#ifdef OCU_OMP 
   omp_set_lock(&_lock);
+#endif
 
   for (int i=0; i < _q3d.size(); i++) {
     TransferRequest3D d = _q3d[i];
@@ -66,13 +72,19 @@ TransferRequestQ::process3d()
   }
 
   _q3d.clear();
+
+#ifdef OCU_OMP 
   omp_unset_lock(&_lock);
+#endif
 }
 
 void 
 TransferRequestQ::processalloc() 
 {
+#ifdef OCU_OMP 
   omp_set_lock(&_lock);
+#endif
+
   for (int i=0; i < _qalloc.size(); i++) {
     TransferRequestAlloc d = _qalloc[i];
     // handle the request
@@ -97,7 +109,9 @@ TransferRequestQ::processalloc()
   }
 
   _qalloc.clear();
+#ifdef OCU_OMP 
   omp_unset_lock(&_lock);
+#endif
 }
 
 

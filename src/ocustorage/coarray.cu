@@ -26,7 +26,9 @@ CoArrayManager CoArrayManager::s_manager;
 
 CoArrayManager::CoArrayManager()
 {
+#ifdef OCU_OMP
   omp_init_lock(&_lock);
+#endif
   _valid = false;
   _num_images = 1;
 }
@@ -34,12 +36,15 @@ CoArrayManager::CoArrayManager()
 CoArrayManager::~CoArrayManager()
 {
   // clean up tables?  Or memory leak?
+#ifdef OCU_OMP
   omp_destroy_lock(&_lock);
+#endif
 }
 
 
 bool CoArrayManager::_initialize(int num_images)
 {
+
   for (int i=0; i < num_images; i++) {
     _transfers[i] = new TransferRequestQ(i);
     _mempools[i] = new ExchangeMemoryPool();
@@ -68,15 +73,18 @@ CoArrayTable *CoArrayManager::_register_coarray(const char *name, int image_id, 
   // release mutex
   // add ptr to slot
   // barrier - implicit when co array is created
+#ifdef OCU_OMP
   omp_set_lock(&_lock);
+#endif
   std::map<std::string, CoArrayTable *>::iterator iter = _coarrays.find(name);
   if (iter == _coarrays.end()) {
     iter = _coarrays.insert(std::pair<std::string, CoArrayTable *>(name, new CoArrayTable())).first;
     iter->second->name = name;
   }
   iter->second->table[image_id] = coarray;
+#ifdef OCU_OMP
   omp_unset_lock(&_lock);
-
+#endif
 
   ThreadManager::barrier();
 
@@ -89,16 +97,24 @@ void CoArrayManager::_unregister_coarray(const std::string &name, int image_id)
   // grab mutex
   // if entry is all empty, remove it
   // release mutex
+#ifdef OCU_OMP
   omp_set_lock(&_lock);
+#endif
   std::map<std::string, CoArrayTable *>::iterator iter = _coarrays.find(name);
   bool not_found = iter == _coarrays.end();
+
+#ifdef OCU_OMP
   omp_unset_lock(&_lock);
-  
+#endif
+
   if (not_found) {
     return;
   }
 
+#ifdef OCU_OMP
   omp_set_lock(&_lock);
+#endif
+
   iter->second->table[image_id] = 0;
   bool empty = true;
   for (int i=0; i < OCU_MAX_IMAGES; i++)
@@ -108,7 +124,9 @@ void CoArrayManager::_unregister_coarray(const std::string &name, int image_id)
     delete iter->second;
     _coarrays.erase(iter);
   }
+#ifdef OCU_OMP
   omp_unset_lock(&_lock);
+#endif
 }
 
 

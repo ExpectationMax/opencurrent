@@ -18,8 +18,12 @@
 #define __OCUUTIL_DEFINES_H__
 
 //#define OCU_ENABLE_GPU_TIMING_BY_DEFAULT
-#define OCU_MAX_IMAGES 4
 
+#ifdef OCU_OMP
+#define OCU_MAX_IMAGES (4)
+#else
+#define OCU_MAX_IMAGES (1)
+#endif
 
 #ifdef __CUDACC__
 

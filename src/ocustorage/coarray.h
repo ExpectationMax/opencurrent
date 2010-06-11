@@ -55,7 +55,11 @@ private:
   std::map<std::string, CoArrayTable *> _coarrays;
   TransferRequestQ  *_transfers[OCU_MAX_IMAGES];
   ExchangeMemoryPool *_mempools[OCU_MAX_IMAGES];
+
+#ifdef OCU_OMP
   omp_lock_t _lock;
+#endif
+
   bool _valid;
   int _num_images;
 

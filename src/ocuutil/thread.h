@@ -18,8 +18,10 @@
 #ifndef __OCU_UTIL_THREAD_H__
 #define __OCU_UTIL_THREAD_H__
 
-
+#ifdef OCU_OMP
 #include <omp.h>
+#endif
+
 #include <driver_types.h>
 
 #include "ocuutil/defines.h"

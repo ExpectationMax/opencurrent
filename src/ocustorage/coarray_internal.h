@@ -166,34 +166,53 @@ class TransferRequestQ {
   std::vector<TransferRequest3D> _q3d;
   std::vector<TransferRequestAlloc> _qalloc;
   int _image_id;
+
+#ifdef OCU_OMP
   omp_lock_t _lock;
+#endif
 
 public:
   TransferRequestQ(int image_id) :
       _image_id(image_id) {
+#ifdef OCU_OMP
     omp_init_lock(&_lock);
-  }
+#endif
+    }
 
   ~TransferRequestQ() {
+#ifdef OCU_OMP
     omp_destroy_lock(&_lock);
+#endif
   }
 
   void push(const TransferRequest1D &request) {
+#ifdef OCU_OMP
     omp_set_lock(&_lock);
+#endif
     _q1d.push_back(request);
+#ifdef OCU_OMP
     omp_unset_lock(&_lock);
+#endif
   }
 
   void push(const TransferRequest3D &request) {
+#ifdef OCU_OMP
     omp_set_lock(&_lock);
+#endif
     _q3d.push_back(request);
+#ifdef OCU_OMP
     omp_unset_lock(&_lock);
+#endif
   }
 
   void push(const TransferRequestAlloc &request) {
+#ifdef OCU_OMP
     omp_set_lock(&_lock);
+#endif
     _qalloc.push_back(request);
+#ifdef OCU_OMP
     omp_unset_lock(&_lock);
+#endif
   }
 
   void process1d();
