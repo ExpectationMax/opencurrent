@@ -16,6 +16,7 @@
 
 
 #include "ocustorage/coarray_internal.h"
+#include <cstdio>
 
 namespace ocu {
 

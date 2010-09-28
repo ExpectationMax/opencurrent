@@ -15,6 +15,7 @@
  */
 
 #include "ocustorage/coarray_internal.h"
+#include <cstdio>
 
 template<typename T>
 __global__ void kernel_region3d_to_region3d(
