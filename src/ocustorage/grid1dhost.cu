@@ -18,9 +18,10 @@
 #include <memory.h>
 
 
-#include "ocustorage/coarray.h"
 #include "ocuutil/memory.h"
+#include "ocuutil/kernel_wrapper.h"
 #include "ocuutil/reduction_op.h"
+#include "ocustorage/coarray.h"
 
 
 namespace ocu {
@@ -35,11 +36,14 @@ Grid1DHost<T>::copy_interior_data(const Grid1DDevice<T> &from)
     return false;
   }
 
+  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
+  wrapper.PreKernel();
+
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_shifted_buffer, &from.at(0), sizeof(T) * this->nx(), cudaMemcpyDeviceToHost)) {
     printf("[ERROR] Grid1DHost::copy_interior_data - cudaMemcpy failed\n");
     return false;
   }
-  
+  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->nx());    
   return true;
 }
 
@@ -52,12 +56,15 @@ Grid1DHost<T>::copy_all_data(const Grid1DDevice<T> &from)
     return false;
   }
 
+  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
+  wrapper.PreKernel();
+
   cudaError_t er = cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->pnx(), cudaMemcpyDeviceToHost);
   if (er != (unsigned int) CUDA_SUCCESS) {
     printf("[ERROR] Grid1DHost::copy_all_data - cudaMemcpy failed with %s\n", cudaGetErrorString(er));
     return false;
   }
-  
+  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->pnx());      
   return true;
 }
 

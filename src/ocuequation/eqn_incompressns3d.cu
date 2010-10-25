@@ -149,7 +149,7 @@ Eqn_IncompressibleNS3D<T>::add_thermal_force()
     _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
-  if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
+  if (!wrapper.PostKernelDim("Eqn_IncompressibleNS3D_add_thermal_force", Dg, Db))
     this->add_error();
 
 }
@@ -765,7 +765,7 @@ Eqn_IncompressibleNS3DCo<T>::add_thermal_force()
     _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
-  if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
+  if (!wrapper.PostKernelDim("Eqn_IncompressibleNS3D_add_thermal_force", Dg, Db))
     this->add_error();
 
 }

@@ -106,7 +106,7 @@ bool Sol_LaplacianCentered3DDevice<T>::solve()
     (T)(1/(_hx*_hx)), (T)(1/(_hy*_hy)), (T)(1/(_hz*_hz)), coefficient,
     phi->xstride(), phi->ystride(), 
     _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY);
-  return PostKernel("Sol_LaplacianCentered3DDevice_stencil");
+  return PostKernelDim("Sol_LaplacianCentered3DDevice_stencil", Dg, Db);
 }
 
 template<typename T>

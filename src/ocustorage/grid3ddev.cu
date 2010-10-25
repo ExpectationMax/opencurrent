@@ -192,7 +192,7 @@ bool Grid3DDevice<T>::clear(T val)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), val, this->num_allocated_elements());
-  return wrapper.PostKernel("Grid3DDevice_clear");
+  return wrapper.PostKernelDim("Grid3DDevice_clear", Dg, Db);
 }
 
 
@@ -205,10 +205,10 @@ Grid3DDevice<T>::copy_all_data(const Grid3DHost<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_HTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice);
-  return wrapper.PostKernel("cudaMemcpy(HostToDevice)");
+  return wrapper.PostKernelBytes("cudaMemcpy(HostToDevice)", sizeof(T) * this->num_allocated_elements());
 }
 
 
@@ -229,7 +229,7 @@ Grid3DDevice<T>::copy_all_data(const Grid3DDevice<S> &from)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_copy_all_data<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), from.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernel("Grid3DDevice_copy_all_data");
+  return wrapper.PostKernelDim("Grid3DDevice_copy_all_data", Dg, Db);
 }
 
 template<>
@@ -242,10 +242,10 @@ Grid3DDevice<float>::copy_all_data(const Grid3DDevice<float> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(float) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
+  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(float) * this->num_allocated_elements());
 }
 
 template<>
@@ -258,10 +258,10 @@ Grid3DDevice<int>::copy_all_data(const Grid3DDevice<int> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(int) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
+  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(int) * this->num_allocated_elements());
 }
 
 template<>
@@ -274,10 +274,10 @@ Grid3DDevice<double>::copy_all_data(const Grid3DDevice<double> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(double) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
+  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(double) * this->num_allocated_elements());
 }
 
 template<typename T>
@@ -294,7 +294,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernel("Grid3DDevice_linear_combination");
+  return wrapper.PostKernelDim("Grid3DDevice_linear_combination", Dg, Db);
 }
 
 template<typename T>
@@ -333,7 +333,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
     Grid3DDevice_linear_combination2_3D<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0,0,0), alpha1, &g1.at(0,0,0), alpha2, &g2.at(0,0,0), 
       this->xstride(), this->ystride(), this->nx(), this->ny(), this->nz(), 
       blocksInY, 1.0f / (float)blocksInY);
-    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
+    return wrapper.PostKernelDim("Grid3DDevice_linear_combination2_3D", Dg, Db);
   }
   else {
     int block_size = 512;
@@ -343,7 +343,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
     KernelWrapper wrapper;
     wrapper.PreKernel();
     Grid3DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
-    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
+    return wrapper.PostKernelDim("Grid3DDevice_linear_combination2_3D",Dg, Db);
   }
 
 }
@@ -352,7 +352,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
 template<typename T>
 Grid3DDevice<T>::~Grid3DDevice()
 {
-  cudaFree(this->_buffer);
+  device_free(this->_buffer);
 }
 
 template<typename T>
@@ -388,8 +388,9 @@ bool Grid3DDevice<T>::init(int nx_val, int ny_val, int nz_val, int gx_val, int g
   this->_pnzpny = this->_pnz * this->_pny;
   this->_allocated_elements = this->_pnzpny * this->_pnx + pre_padding;
 
-  if ((unsigned int)CUDA_SUCCESS != cudaMalloc((void **)&this->_buffer, sizeof(T) * this->num_allocated_elements())) {
-    printf("[ERROR] Grid3DDeviceF::init - cudaMalloc failed\n");
+  this->_buffer = (T*)device_malloc(sizeof(T) * this->num_allocated_elements());
+  if (this->_buffer == 0) {
+    printf("[ERROR] Grid3DDeviceF::init - device_malloc failed\n");
     return false;
   }
   

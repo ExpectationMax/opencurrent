@@ -91,16 +91,16 @@ TransferRequestQ::processalloc()
     switch(d.cmd) {
       case TRANSFER_ALLOCATE:
         {
-          cudaError_t ok = cudaMalloc(d.result, d.num_bytes);
-          if (ok != cudaSuccess)
-            printf("[ERROR] TransferRequestQ::processalloc - cudaMalloc failed: %s\n", cudaGetErrorString(ok));
+          *d.result = device_malloc(d.num_bytes);
+          if (*d.result == 0)
+            printf("[ERROR] TransferRequestQ::processalloc - device_malloc failed\n");
           else
             *d.valid = true;
         }
         break;
       case TRANSFER_FREE:
         {
-          cudaFree(d.ptr);
+          device_free(d.ptr);
         }
         break;
       default:

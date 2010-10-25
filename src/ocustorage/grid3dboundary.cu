@@ -749,7 +749,7 @@ apply_3d_boundary_conditions_level1_nocorners(
 
   kernel_apply_3d_boundary_conditions_level1_nocorners<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
     (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), nx, ny, nz);
-  return wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_nocorners", nz);
+  return wrapper.PostKernelDim("kernel_apply_3d_boundary_conditions_level1_nocorners", Dg, Db, nz);
 }
 
 
@@ -790,7 +790,7 @@ apply_3d_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_boundary_conditions_level1_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_x", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_boundary_conditions_level1_x", Dg, Db, nz))
       return false;
   }
 
@@ -801,7 +801,7 @@ apply_3d_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_boundary_conditions_level1_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_y", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_boundary_conditions_level1_y", Dg, Db, nz))
       return false;
   }
 
@@ -812,7 +812,7 @@ apply_3d_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_boundary_conditions_level1_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level1_z", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_boundary_conditions_level1_z", Dg, Db, nz))
       return false;
   }
 
@@ -870,7 +870,7 @@ apply_3d_mac_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level1_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_x", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level1_x", Dg, Db, nz))
       return false;
   }
 
@@ -881,7 +881,7 @@ apply_3d_mac_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level1_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_y", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level1_y", Dg, Db, nz))
       return false;
   }
 
@@ -892,7 +892,7 @@ apply_3d_mac_boundary_conditions_level1(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level1_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level1_z", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level1_z", Dg, Db, nz))
       return false;
   }
 
@@ -933,7 +933,7 @@ apply_3d_boundary_conditions_level2_nocorners(
   wrapper.PreKernel();
   kernel_apply_3d_boundary_conditions_level2_nocorners<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&grid.at(0,0,0), bc,
     (T)hx, (T)hy, (T)hz, grid.xstride(), grid.ystride(), nx, ny, nz);
-  return wrapper.PostKernel("kernel_apply_3d_boundary_conditions_level2_nocorners", nz);
+  return wrapper.PostKernelDim("kernel_apply_3d_boundary_conditions_level2_nocorners", Dg, Db, nz);
 }
 
 
@@ -986,7 +986,7 @@ apply_3d_mac_boundary_conditions_level2(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level2_x<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_x", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level2_x", Dg, Db, nz))
       return false;
   }
 
@@ -997,7 +997,7 @@ apply_3d_mac_boundary_conditions_level2(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level2_y<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_y", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level2_y", Dg, Db, nz))
       return false;
   }
 
@@ -1008,7 +1008,7 @@ apply_3d_mac_boundary_conditions_level2(
     wrapper.PreKernel();
     kernel_apply_3d_mac_boundary_conditions_level2_z<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_grid.at(0,0,0), &v_grid.at(0,0,0), &w_grid.at(0,0,0), bc,
       (T)hx, (T)hy, (T)hz, u_grid.xstride(), u_grid.ystride(), gx, gy, gz, nx, ny, nz);
-    if (!wrapper.PostKernel("kernel_apply_3d_mac_boundary_conditions_level2_z", nz))
+    if (!wrapper.PostKernelDim("kernel_apply_3d_mac_boundary_conditions_level2_z", Dg, Db, nz))
       return false;
   }
 

@@ -103,7 +103,7 @@ Sol_LaplacianCentered1DDevice::solve()
 
   PreKernel();
   Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(inv_h2, &deriv_densitydt.at(0), &density.at(0), nx());
-  PostKernel("Sol_LaplacianCentered1DDevice::solve");
+  PostKernelDim("Sol_LaplacianCentered1DDevice::solve", Dg, Db);
 
   return !any_error();
 }
@@ -139,7 +139,7 @@ Sol_LaplacianCentered1DDeviceNew::solve()
   PreKernel();
   Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(inv_h2, &deriv_densitydt.at(0), &density->at(0), nx());
 //  Sol_Laplacian1DCentered_apply_stencil<<<Dg, Db>>>(inv_h2, &deriv_densitydt.at(0), &density->at(0), nx());
-  PostKernel("Sol_LaplacianCentered1DDevice::solve");
+  PostKernelDim("Sol_LaplacianCentered1DDevice::solve", Dg, Db);
 
   return !any_error();
 }

@@ -132,7 +132,7 @@ Sol_PassiveAdvection3DDevice<T>::solve()
     return false;
   }
 
-  return PostKernel("Sol_PassiveAdvection3D_apply_interp");
+  return PostKernelDim("Sol_PassiveAdvection3D_apply_interp", Dg, Db);
 }
 
 template<typename T>

@@ -1366,7 +1366,7 @@ Sol_MultigridPressure3DDevice<double>::invoke_kernel_relax(Grid3DDevice<double> 
   tnz = u_grid.nx();
 #endif
 
-  return PostKernel("Sol_MultigridPressure3DDeviceD_relax", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceD_relax", Dg, Db, tnz);
 }
 
 template<>
@@ -1401,7 +1401,7 @@ Sol_MultigridPressure3DDevice<double>::invoke_kernel_calculate_residual(Grid3DDe
   Sol_MultigridPressure3DDeviceD_calculate_residual<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&b_grid.at(0,0,0), &r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), r_grid.nx(), r_grid.ny(), r_grid.nz(), r_grid.shift_amount(),
     fx_div_hsq, fy_div_hsq, fz_div_hsq, diag, blocksInY, 1.0f/(float)blocksInY);
 
-  return PostKernel("Sol_MultigridPressure3DDeviceD_calculate_residual", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceD_calculate_residual", Dg, Db, tnz);
 }
 
 template<>
@@ -1427,7 +1427,7 @@ Sol_MultigridPressure3DDevice<double>::invoke_kernel_restrict(Grid3DDevice<doubl
   Sol_MultigridPressure3DDeviceD_restrict<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), 
     &b_coarse_grid.at(0,0,0), b_coarse_grid.xstride(), b_coarse_grid.ystride(), b_coarse_grid.nx(), b_coarse_grid.ny(), b_coarse_grid.nz(), 
     blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceD_restrict", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceD_restrict", Dg, Db, tnz);
 }
 
 template<>
@@ -1453,7 +1453,7 @@ Sol_MultigridPressure3DDevice<double>::invoke_kernel_prolong(Grid3DDevice<double
   Sol_MultigridPressure3DDeviceD_prolong<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_fine_grid.at(0,0,0), u_fine_grid.xstride(), u_fine_grid.ystride(), u_fine_grid.shift_amount(),
     u_coarse_grid.xstride(), u_coarse_grid.ystride(), u_coarse_grid.nx(), u_coarse_grid.ny(), u_coarse_grid.nz(),  u_coarse_grid.shift_amount(),
     blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceD_prolong", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceD_prolong", Dg, Db, tnz);
 }
 
 

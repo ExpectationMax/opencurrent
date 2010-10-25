@@ -17,6 +17,9 @@
 #ifndef __OCU_UTIL_KERNEL_WRAPPER_H__
 #define __OCU_UTIL_KERNEL_WRAPPER_H__
 
+#include <vector>
+
+#include <vector_types.h>
 #include "ocuutil/timer.h"
 
 namespace ocu {
@@ -26,6 +29,15 @@ namespace ocu {
 class KernelWrapper {
 
 public:
+
+  enum KernelType {
+    KT_CPU,
+    KT_GPU,
+    KT_DTOH,
+    KT_HTOD,
+    KT_HTOH,
+    KT_DTOD
+  };
 
   enum TimingMode {
     TM_OFF = 0,
@@ -38,12 +50,32 @@ private:
   GPUTimer     _gpu_timer;
   CPUTimer     _cpu_timer;
   unsigned int _timing_mode;
+  KernelType   _kt;
+  std::vector<int> _deps;
+  int          _id;
+  dim3         _grid;
+  dim3         _block;
+  int          _bytes;
+
+  static int s_last_id;
+  static int s_next_id;
+  static int s_logging_enabled;
+  static std::ofstream s_output;
+
+  static void CheckTraceFileOpen();
+
+  void WriteTraceFile(const char *name, double usecs);
 
 public:
+
+  KernelWrapper(KernelType kt=KT_GPU);
 
   void PreKernel();
   bool PostKernel(const char *kernel_name);
   bool PostKernel(const char *kernel_name, int resolution);
+  bool PostKernelDim(const char *kernel_name, dim3 grid, dim3 block);
+  bool PostKernelDim(const char *kernel_name, dim3 grid, dim3 block, int resolution);
+  bool PostKernelBytes(const char *kernel_name, int bytes);
 
   void ToggleCPUTiming(bool onoff) {
     if (onoff)
@@ -60,9 +92,13 @@ public:
 
   }
 
-public:
+  void AddDependency(int id) { _deps.push_back(id); }
+  void MakeIndependent()     { _deps.clear(); }
 
-  KernelWrapper();
+  static int GetLastId() { return s_last_id; }
+
+  static void DisableLogging();
+  static void EnableLogging();
 };
 
 

@@ -84,7 +84,7 @@ Sol_Divergence3DDevice<T>::solve()
     (T)(1/_hx), (T)(1/_hy), (T)(1/_hz), 
     u->xstride(), u->ystride(), 
     _nx, _ny, _nz, blocksInY, 1.0f / (float)blocksInY);
-  return PostKernel("Sol_Divergence3DDevice_calculate_divergence::calculate_divergence");
+  return PostKernelDim("Sol_Divergence3DDevice_calculate_divergence::calculate_divergence", Dg, Db);
 }
 
 template<typename T>

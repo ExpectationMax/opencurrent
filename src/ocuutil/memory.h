@@ -30,6 +30,9 @@ enum MemoryType {
 void *host_malloc(size_t bytes, bool pinned, bool write_combined = false);
 void host_free(void *, bool pinned_or_write_combined);
 
+void *device_malloc(size_t bytes);
+void device_free(void *);
+
 } // end namespace
 
 

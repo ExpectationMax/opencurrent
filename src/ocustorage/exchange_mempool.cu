@@ -42,9 +42,9 @@ ExchangeMemoryHandle * ExchangeMemoryPool::allocate_handle(size_t num_host_bytes
 
   hdl->d_local_size = num_local_device_bytes;
   if (hdl->d_local_size > 0) {
-    cudaError_t ok = cudaMalloc((void **)&hdl->d_local_bytes, hdl->d_local_size); 
-    if (ok != cudaSuccess) {
-      printf("[ERROR] ExchangeMemoryPool::create_handle - cudaMalloc() failed: %s\n", cudaGetErrorString(ok));
+    hdl->d_local_bytes = device_malloc(hdl->d_local_size);
+    if (hdl->d_local_bytes == 0) {
+      printf("[ERROR] ExchangeMemoryPool::create_handle - device_malloc failed\n");
       is_valid = false;
     }
   }
@@ -87,7 +87,7 @@ void ExchangeMemoryPool::remove_handle(int handle)
     host_free(hdl->h_bytes, true);
   }
   if (hdl && hdl->d_local_size > 0) {
-    cudaFree(hdl->d_local_bytes);
+    device_free(hdl->d_local_bytes);
   }
   if (hdl && hdl->d_remote_size > 0 && hdl->remote_id != -1) {
     TransferRequestAlloc req;
@@ -116,7 +116,7 @@ void ExchangeMemoryPool::cleanup()
   for (int i=0; i < _handles.size(); i++) {
     if (_handles[i] && _handles[i]->valid) {
       host_free(_handles[i]->h_bytes, true);
-      cudaFree(_handles[i]->d_local_bytes);
+      device_free(_handles[i]->d_local_bytes);
       delete _handles[i];
       _handles[i] = 0;
     }

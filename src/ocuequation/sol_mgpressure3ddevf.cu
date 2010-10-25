@@ -391,7 +391,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_relax(Grid3DDevice<float> &u
     (float)_omega, (float)(h*h), (float)_fx, (float)_fy, (float)_fz,  (float)(2*_fx + 2*_fy +2*_fz),
     (float)bc_diag_mod(this_bc.xpos, _fx), (float)bc_diag_mod(this_bc.xneg, _fx), (float)bc_diag_mod(this_bc.ypos, _fy), (float)bc_diag_mod(this_bc.yneg, _fy), (float)bc_diag_mod(this_bc.zpos, _fz), (float)bc_diag_mod(this_bc.zneg, _fz), 
     blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceF_relax", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceF_relax", Dg, Db, tnz);
 }
 
 
@@ -425,7 +425,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_calculate_residual(Grid3DDev
   PreKernel();
   Sol_MultigridPressure3DDeviceF_calculate_residual<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&b_grid.at(0,0,0), &r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), r_grid.nx(), r_grid.ny(), r_grid.nz(), r_grid.shift_amount(),
     (float)fx_div_hsq, (float)fy_div_hsq, (float)fz_div_hsq, (float)diag, blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceF_calculate_residual", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceF_calculate_residual", Dg, Db, tnz);
 }
 
 template<>
@@ -453,7 +453,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_restrict(Grid3DDevice<float>
   Sol_MultigridPressure3DDeviceF_restrict<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&r_grid.at(0,0,0), r_grid.xstride(), r_grid.ystride(), 
     &b_coarse_grid.at(0,0,0), b_coarse_grid.xstride(), b_coarse_grid.ystride(), b_coarse_grid.nx(), b_coarse_grid.ny(), b_coarse_grid.nz(), 
     blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceF_restrict", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceF_restrict", Dg, Db, tnz);
 }
 
 template<>
@@ -481,7 +481,7 @@ Sol_MultigridPressure3DDevice<float>::invoke_kernel_prolong(Grid3DDevice<float> 
   Sol_MultigridPressure3DDeviceF_prolong<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&u_fine_grid.at(0,0,0), u_fine_grid.xstride(), u_fine_grid.ystride(), u_fine_grid.shift_amount(),
     u_coarse_grid.xstride(), u_coarse_grid.ystride(), u_coarse_grid.nx(), u_coarse_grid.ny(), u_coarse_grid.nz(),  u_coarse_grid.shift_amount(),
     blocksInY, 1.0f/(float)blocksInY);
-  return PostKernel("Sol_MultigridPressure3DDeviceF_prolong", tnz);
+  return PostKernelDim("Sol_MultigridPressure3DDeviceF_prolong", Dg, Db, tnz);
 }
 
 

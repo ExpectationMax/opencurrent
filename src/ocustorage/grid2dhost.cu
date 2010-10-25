@@ -19,6 +19,7 @@
 
 #include "ocustorage/grid2d.h"
 #include "ocuutil/timer.h"
+#include "ocuutil/kernel_wrapper.h"
 #include "ocuutil/timing_pool.h"
 
 namespace ocu {
@@ -34,16 +35,13 @@ Grid2DHost<T>::copy_all_data(const Grid2DDevice<T> &from)
     return false;
   }
 
-  GPUTimer timer;
-  timer.start();
+  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
+  wrapper.PreKernel();
   if ((unsigned int)CUDA_SUCCESS != cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToHost)) {
     printf("[ERROR] Grid2DHost::copy_all_data - cudaMemcpy failed\n");
     return false;
   }
-  timer.stop();
-  global_timer_add_timing("cudaMemcpy(DeviceToHost)", timer.elapsed_ms());
-
-  return true;
+  return wrapper.PostKernelBytes("cudaMemcpy(DtoH)", sizeof(T) * this->num_allocated_elements());
 }
 
 

@@ -84,7 +84,7 @@ Sol_Gradient3DDevice<T>::solve()
     phi->xstride(), phi->ystride(), 
     phi->nx(), phi->ny(), phi->nz(), blocksInY, 1.0f / (float)blocksInY);
 
-  return PostKernel("Sol_Gradient3DDevice_subtract_grad");
+  return PostKernelDim("Sol_Gradient3DDevice_subtract_grad", Dg, Db);
 }
 
 template<typename T>

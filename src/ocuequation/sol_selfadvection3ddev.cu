@@ -397,7 +397,7 @@ Sol_SelfAdvection3DDevice<T>::solve_naive()
     return false;
   }
 
-  return PostKernel("Sol_SelfAdvection3D_apply_upwind");
+  return PostKernelDim("Sol_SelfAdvection3D_apply_upwind", Dg, Db);
 }
 
 template<>
@@ -487,7 +487,7 @@ Sol_SelfAdvection3DDevice<float>::solve_tex()
     return false;
   }
 
-  return PostKernel("Advection3DF_apply_upwind_TEX");
+  return PostKernelDim("Advection3DF_apply_upwind_TEX", Dg, Db);
 }
 
 #ifdef OCU_DOUBLESUPPORT
@@ -577,7 +577,7 @@ Sol_SelfAdvection3DDevice<double>::solve_tex()
     return false;
   }
 
-  return PostKernel("Advection3DD_apply_upwind_TEX");
+  return PostKernelDim("Advection3DD_apply_upwind_TEX", Dg, Db);
 }
 #endif // OCU_DOUBLESUPPORT
 

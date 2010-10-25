@@ -35,6 +35,24 @@ Solver::Solver() {
 
 }
 
+bool Solver::PostKernelDim(const char *kernel_name, dim3 grid, dim3 block)
+{
+  if (!_wrapper.PostKernelDim(kernel_name, grid, block)) {
+    add_error();
+    return false;
+  }
+  return true;
+}
+
+bool Solver::PostKernelDim(const char *kernel_name, dim3 grid, dim3 block, int resolution)
+{
+  if (!_wrapper.PostKernelDim(kernel_name, grid, block, resolution)) {
+    add_error();
+    return false;
+  }
+  return true;
+}
+
 
 bool Solver::PostKernel(const char *kernel_name) {
   if (!_wrapper.PostKernel(kernel_name)) {

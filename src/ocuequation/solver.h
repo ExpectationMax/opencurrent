@@ -35,6 +35,8 @@ protected:
   void PreKernel()                          { _wrapper.PreKernel(); }
   bool PostKernel(const char *kernel_name);
   bool PostKernel(const char *kernel_name, int resolution);
+  bool PostKernelDim(const char *kernel_name, dim3 grid, dim3 block);
+  bool PostKernelDim(const char *kernel_name, dim3 grid, dim3 block, int resolution);
 
   void ToggleCPUTiming(bool onoff)          { _wrapper.ToggleCPUTiming(onoff); }
   void ToggleGPUTiming(bool onoff)          { _wrapper.ToggleGPUTiming(onoff); }

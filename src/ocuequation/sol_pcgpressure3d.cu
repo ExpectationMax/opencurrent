@@ -217,7 +217,7 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_apply_laplacian(Grid3DDevice<T> &dst, 
     fx_div_hsq, fy_div_hsq, fz_div_hsq, diag,
     blocksInY, 1.0f/(float)blocksInY);
 #endif
-  PostKernel("Sol_PCGPressure3DDevice_apply_laplacian");
+  PostKernelDim("Sol_PCGPressure3DDevice_apply_laplacian", Dg, Db);
 }
 
 template<typename T>
@@ -249,7 +249,7 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_diag_preconditioner(Grid3DDevice<T> &d
     src.nx(), src.ny(), src.nz(), 
     fx_div_hsq, fy_div_hsq, fz_div_hsq,
     blocksInY, 1.0f/(float)blocksInY);
-  PostKernel("Sol_PCGPressure3DDevice_diag_preconditioner");
+  PostKernelDim("Sol_PCGPressure3DDevice_diag_preconditioner", Dg, Db);
 }
 
 
@@ -280,7 +280,7 @@ Sol_PCGPressure3DDevice<T>::invoke_kernel_dot_product(const Grid3DDevice<T> &a, 
   Sol_PCGPressure3DDevice_ptwise_mult<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&temp.at(0,0,0), &a.at(0,0,0), &b.at(0,0,0), a.xstride(), a.ystride(), 
     a.nx(), a.ny(), a.nz(), 
     blocksInY, 1.0f/(float)blocksInY);
-  PostKernel("Sol_PCGPressure3DDevice_ptwise_mult");
+  PostKernelDim("Sol_PCGPressure3DDevice_ptwise_mult", Dg, Db);
 
   T result;
   temp.reduce_sum(result);

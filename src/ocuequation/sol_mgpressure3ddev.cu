@@ -153,9 +153,7 @@ Sol_MultigridPressure3DDevice<T>::relax_on_host(int level, int iterations, Relax
 
   BoundaryConditionSet h_bc = get_bc_at_level(level);
 
-  KernelWrapper wrapper;
-  wrapper.ToggleCPUTiming(true);
-  wrapper.ToggleGPUTiming(false);
+  KernelWrapper wrapper(KernelWrapper::KT_CPU);
   wrapper.PreKernel();
 
   // To make this symmetric, we must make iterations an even number, and it must be at least 4

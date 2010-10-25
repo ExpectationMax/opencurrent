@@ -38,13 +38,13 @@ Grid3DHost<T>::copy_all_data(const Grid3DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
   wrapper.PreKernel();
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToHost)) {
     printf("[ERROR] Grid3DHost::copy_all_data - cudaMemcpy failed\n");
     return false;
   }
-  return wrapper.PostKernel("cudaMemcpy(DeviceToHost)");
+  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToHost)", sizeof(T) * this->num_allocated_elements());
 }
 
 

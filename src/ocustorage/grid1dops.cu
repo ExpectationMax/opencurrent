@@ -18,6 +18,7 @@
 #include <cstdio>
 
 #include "ocuutil/reduction_op.h"
+#include "ocuutil/kernel_wrapper.h"
 #include "ocustorage/grid1dops.h"
 
 
@@ -102,11 +103,15 @@ bool reduce_with_operator(const ocu::Grid1DDevice<T> &grid, T &result, REDUCE re
 
   }
 
+  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
+  wrapper.PreKernel();
+
   cudaError_t er = cudaMemcpy(&result, temp_to, sizeof(T), cudaMemcpyDeviceToHost);
   if (er != (unsigned int)CUDA_SUCCESS) {
     printf("[ERROR] reduce_with_operator - cudaMemcpy failed with CUDA error \"%s\"\n", cudaGetErrorString(er));
     return false;    
   }
+  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T));      
 
   return true; 
 }

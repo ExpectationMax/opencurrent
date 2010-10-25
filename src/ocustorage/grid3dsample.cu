@@ -160,7 +160,7 @@ sample_points_3d(
                                       period_nx, period_ny, period_nz,
                                       1.0f/hx, 1.0f/hy, 1.0f/hz, 
                                       shiftx, shifty, shiftz);
-  return wrapper.PostKernel("kernel_sample_points_3d");  
+  return wrapper.PostKernelDim("kernel_sample_points_3d", Dg, Db);  
 }
 
 template<typename T>

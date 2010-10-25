@@ -18,19 +18,45 @@
 #include <cstdio>
 #include "ocuutil/memory.h"
 #include "ocuutil/thread.h"
+#include "ocuutil/kernel_wrapper.h"
 
 
 namespace ocu {
 
+void *device_malloc(size_t bytes)
+{
+  KernelWrapper kernel(KernelWrapper::KT_CPU);
+
+  kernel.PreKernel();
+  void *d_ptr = 0;
+  if (cudaSuccess != cudaMalloc((void **)&d_ptr, bytes)) {
+    printf("[ERROR] cudaMalloc - failed with cudaError \"%s\"\n", cudaGetErrorString(cudaGetLastError()));
+    return 0;
+  }
+  kernel.PostKernel("cudaMalloc");
+
+  return d_ptr;
+}
+
+void device_free(void *ptr)
+{
+  KernelWrapper kernel(KernelWrapper::KT_CPU);
+  kernel.PreKernel();
+  cudaFree(ptr);
+  kernel.PostKernel("cudaFree");
+}
 
 void *host_malloc(size_t bytes, bool pinned, bool write_combined)
 {
+
   if (!pinned && !write_combined) {
     return malloc(bytes);
   }
   else {
-    void *result;
+    KernelWrapper kernel(KernelWrapper::KT_CPU);
+    kernel.PreKernel();
 
+    void *result;
     // always allocate portable pinned, not just pinned
     unsigned int flag = cudaHostAllocPortable;
     if (write_combined)
@@ -41,6 +67,7 @@ void *host_malloc(size_t bytes, bool pinned, bool write_combined)
       return 0;
     }
 
+    kernel.PostKernel("cudaHostAlloc");
     return result;
   }
     
@@ -48,6 +75,9 @@ void *host_malloc(size_t bytes, bool pinned, bool write_combined)
 
 void host_free(void *ptr, bool pinned)
 {
+  KernelWrapper kernel(KernelWrapper::KT_CPU);
+  kernel.PreKernel();
+
   if (!pinned) {
     free(ptr);
   }
@@ -56,6 +86,8 @@ void host_free(void *ptr, bool pinned)
       printf("[ERROR] host_free - failed on %p with cudaError \"%s\"\n", ptr, cudaGetErrorString(cudaGetLastError()));
     }
   }
+
+  kernel.PostKernel("cudaFreeHost");
 }
 
 

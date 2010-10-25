@@ -17,6 +17,7 @@
 #include "cuda.h"
 #include <cstdio>
 
+#include "ocuutil/memory.h"
 #include "ocuutil/kernel_wrapper.h"
 #include "ocuutil/thread.h"
 #include "ocustorage/grid2d.h"
@@ -80,7 +81,7 @@ bool Grid2DDevice<T>::clear(T val)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid2DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->_buffer, val, this->num_allocated_elements());
-  return wrapper.PostKernel("Grid2DDevice_clear");
+  return wrapper.PostKernelDim("Grid2DDevice_clear", Dg, Db);
 }
 
 
@@ -93,10 +94,10 @@ Grid2DDevice<T>::copy_all_data(const Grid2DHost<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_HTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice);
-  return wrapper.PostKernel("cudaMemcpy(HtoD)");
+  return wrapper.PostKernelBytes("cudaMemcpy(HtoD)", sizeof(T) * this->num_allocated_elements());
 }
 
 
@@ -110,10 +111,10 @@ Grid2DDevice<T>::copy_all_data(const Grid2DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper;
+  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernel("cudaMemcpy(DtoD)");
+  return wrapper.PostKernelBytes("cudaMemcpy(DtoD)", sizeof(T) * this->num_allocated_elements());
 }
 
 
@@ -132,7 +133,7 @@ bool Grid2DDevice<T>::linear_combination(T alpha1, const Grid2DDevice<T> &g1)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid2DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernel("Grid2DDevice_linear_combination1");
+  return wrapper.PostKernelDim("Grid2DDevice_linear_combination1", Dg, Db);
 
 }
 
@@ -155,14 +156,14 @@ bool Grid2DDevice<T>::linear_combination(T alpha1, const Grid2DDevice<T> &g1, T 
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid2DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernel("Grid2DDevice_linear_combination2");
+  return wrapper.PostKernelDim("Grid2DDevice_linear_combination2", Dg, Db);
 }
 
 
 template<typename T>
 Grid2DDevice<T>::~Grid2DDevice()
 {
-  cudaFree(this->_buffer);
+  device_free(this->_buffer);
 }
 
 template<typename T>
@@ -187,8 +188,9 @@ bool Grid2DDevice<T>::init(int nx_val, int ny_val, int gx_val, int gy_val, int p
   if (this->_pny & mask)
     this->_pny = ((this->_pny >> shift_amount) + 1) << shift_amount;
 
-  if ((unsigned int)CUDA_SUCCESS != cudaMalloc((void **)&this->_buffer, sizeof(T) * this->num_allocated_elements())) {
-    printf("[ERROR] Grid2DDeviceF::init - cudaMalloc failed\n");
+  this->_buffer = (T*)device_malloc(sizeof(T) * this->num_allocated_elements());
+  if (this->_buffer == 0) {
+    printf("[ERROR] Grid2DDeviceF::init - device_malloc failed\n");
     return false;
   }
   
