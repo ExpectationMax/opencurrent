@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <vector_types.h>
+#include <fstream>
 #include "ocuutil/timer.h"
 
 namespace ocu {
