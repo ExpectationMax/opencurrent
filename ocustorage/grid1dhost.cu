@@ -18,10 +18,9 @@
 #include <memory.h>
 
 
-#include "ocuutil/memory.h"
-#include "ocuutil/kernel_wrapper.h"
-#include "ocuutil/reduction_op.h"
 #include "ocustorage/coarray.h"
+#include "ocuutil/memory.h"
+#include "ocuutil/reduction_op.h"
 
 
 namespace ocu {
@@ -36,14 +35,11 @@ Grid1DHost<T>::copy_interior_data(const Grid1DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
-  wrapper.PreKernel();
-
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_shifted_buffer, &from.at(0), sizeof(T) * this->nx(), cudaMemcpyDeviceToHost)) {
     printf("[ERROR] Grid1DHost::copy_interior_data - cudaMemcpy failed\n");
     return false;
   }
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->nx());    
+  
   return true;
 }
 
@@ -56,15 +52,12 @@ Grid1DHost<T>::copy_all_data(const Grid1DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
-  wrapper.PreKernel();
-
   cudaError_t er = cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->pnx(), cudaMemcpyDeviceToHost);
   if (er != (unsigned int) CUDA_SUCCESS) {
     printf("[ERROR] Grid1DHost::copy_all_data - cudaMemcpy failed with %s\n", cudaGetErrorString(er));
     return false;
   }
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->pnx());      
+  
   return true;
 }
 
@@ -333,7 +326,7 @@ bool Grid1DHostCo<double>::co_reduce_maxabs(double &result) const
 template<typename T>
 bool Grid1DHostCo<T>::co_reduce_sum(T &result) const
 {
-  bool ok = reduce_sum(result);
+  bool ok = this->reduce_sum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -341,7 +334,7 @@ bool Grid1DHostCo<T>::co_reduce_sum(T &result) const
 template<typename T>
 bool Grid1DHostCo<T>::co_reduce_sqrsum(T &result) const
 {
-  bool ok = reduce_sqrsum(result);
+  bool ok = this->reduce_sqrsum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -349,7 +342,7 @@ bool Grid1DHostCo<T>::co_reduce_sqrsum(T &result) const
 template<typename T>
 bool Grid1DHostCo<T>::co_reduce_max(T &result) const
 {
-  bool ok = reduce_max(result);
+  bool ok = this->reduce_max(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
   return ok;
 }
@@ -357,7 +350,7 @@ bool Grid1DHostCo<T>::co_reduce_max(T &result) const
 template<typename T>
 bool Grid1DHostCo<T>::co_reduce_min(T &result) const
 {
-  bool ok = reduce_min(result);
+  bool ok = this->reduce_min(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
   return ok;
 }
@@ -365,7 +358,7 @@ bool Grid1DHostCo<T>::co_reduce_min(T &result) const
 template<typename T>
 bool Grid1DHostCo<T>::co_reduce_checknan(T &result) const
 {
-  bool ok = reduce_checknan(result);
+  bool ok = this->reduce_checknan(result);
   result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
   return ok;
 }

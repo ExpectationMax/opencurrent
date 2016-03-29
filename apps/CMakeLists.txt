@@ -23,9 +23,9 @@ IF (OCU_NETCDF_ENABLED)
   ENDIF ()
 ENDIF (OCU_NETCDF_ENABLED)
 
-LINK_DIRECTORIES(${CUDAPARSE_BINARY_DIR}/ocuequation 
-  ${CUDAPARSE_BINARY_DIR}/ocustorage
-  ${CUDAPARSE_BINARY_DIR}/ocuutil)
+LINK_DIRECTORIES( ${CMAKE_BINARY_DIR}/ocuequation
+                  ${CMAKE_BINARY_DIR}/ocustorage
+                  ${CMAKE_BINARY_DIR}/ocuutil)
 
 ADD_EXECUTABLE(testapp testapp.cpp)
 ADD_EXECUTABLE(lockex lockex.cpp)

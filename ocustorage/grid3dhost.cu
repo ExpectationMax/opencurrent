@@ -38,13 +38,13 @@ Grid3DHost<T>::copy_all_data(const Grid3DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOH);
+  KernelWrapper wrapper;
   wrapper.PreKernel();
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyDeviceToHost)) {
     printf("[ERROR] Grid3DHost::copy_all_data - cudaMemcpy failed\n");
     return false;
   }
-  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToHost)", sizeof(T) * this->num_allocated_elements());
+  return wrapper.PostKernel("cudaMemcpy(DeviceToHost)");
 }
 
 
@@ -160,7 +160,7 @@ template<typename S>
 bool 
 Grid3DHost<T>::copy_all_data(const Grid3DHost<S> &from)
 {
-  if (!check_layout_match(from)) {
+  if (!this->check_layout_match(from)) {
     printf("[ERROR] Grid3DHost::copy_interior_data - mismatch: (%d, %d, %d) != (%d, %d, %d)\n", this->pnx(), this->pny(), this->pnz(), from.pnx(), from.pny(), from.pnz());
     return false;
   }
@@ -182,7 +182,7 @@ template<>
 bool
 Grid3DHost<float>::copy_all_data(const Grid3DHost<float> &from)
 {
-  if (!check_layout_match(from)) {
+  if (!this->check_layout_match(from)) {
     printf("[ERROR] Grid3DHost::copy_interior_data - mismatch: (%d, %d, %d) != (%d, %d, %d)\n", this->pnx(), this->pny(), this->pnz(), from.pnx(), from.pny(), from.pnz());
     return false;
   }
@@ -197,7 +197,7 @@ template<>
 bool
 Grid3DHost<int>::copy_all_data(const Grid3DHost<int> &from)
 {
-  if (!check_layout_match(from)) {
+  if (!this->check_layout_match(from)) {
     printf("[ERROR] Grid3DHost::copy_interior_data - mismatch: (%d, %d, %d) != (%d, %d, %d)\n", pnx(), pny(), pnz(), from.pnx(), from.pny(), from.pnz());
     return false;
   }
@@ -212,7 +212,7 @@ template<>
 bool
 Grid3DHost<double>::copy_all_data(const Grid3DHost<double> &from)
 {
-  if (!check_layout_match(from)) {
+  if (!this->check_layout_match(from)) {
     printf("[ERROR] Grid3DHost::copy_interior_data - mismatch: (%d, %d, %d) != (%d, %d, %d)\n", pnx(), pny(), pnz(), from.pnx(), from.pny(), from.pnz());
     return false;
   }
@@ -227,7 +227,7 @@ template<typename T>
 bool 
 Grid3DHost<T>::linear_combination(T alpha1, const Grid3DHost<T> &g1)
 {
-  if (check_layout_match(g1)) {
+  if (this->check_layout_match(g1)) {
 
     // fast version if all dimensions match
     T *this_ptr = &this->at(0,0,0);
@@ -239,7 +239,7 @@ Grid3DHost<T>::linear_combination(T alpha1, const Grid3DHost<T> &g1)
       ++g1_ptr;
     }
   }
-  else if (check_interior_dimension_match(g1)) {
+  else if (this->check_interior_dimension_match(g1)) {
     
     // slow version if not all dimensions match
     for (int i=0; i < this->nx(); i++)
@@ -267,7 +267,7 @@ template<typename T>
 bool 
 Grid3DHost<T>::linear_combination(T alpha1, const Grid3DHost<T> &g1, T alpha2, const Grid3DHost<T> &g2)
 {
-  if (check_layout_match(g1) && check_layout_match(g2)) {
+  if (this->check_layout_match(g1) && this->check_layout_match(g2)) {
 
     // fast version if all dimensions match
     T *this_ptr = &this->at(0,0,0);
@@ -281,7 +281,7 @@ Grid3DHost<T>::linear_combination(T alpha1, const Grid3DHost<T> &g1, T alpha2, c
       ++g2_ptr;
     }
   }
-  else if (check_interior_dimension_match(g1) && check_interior_dimension_match(g2)) {
+  else if (this->check_interior_dimension_match(g1) && this->check_interior_dimension_match(g2)) {
     
     // slow version if not all dimensions match
     for (int i=0; i < this->nx(); i++)
@@ -411,7 +411,7 @@ bool Grid3DHostCo<double>::co_reduce_maxabs(double &result) const
 template<typename T>
 bool Grid3DHostCo<T>::co_reduce_sum(T &result) const
 {
-  bool ok = reduce_sum(result);
+  bool ok = this->reduce_sum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -419,7 +419,7 @@ bool Grid3DHostCo<T>::co_reduce_sum(T &result) const
 template<typename T>
 bool Grid3DHostCo<T>::co_reduce_sqrsum(T &result) const
 {
-  bool ok = reduce_sqrsum(result);
+  bool ok = this->reduce_sqrsum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -427,7 +427,7 @@ bool Grid3DHostCo<T>::co_reduce_sqrsum(T &result) const
 template<typename T>
 bool Grid3DHostCo<T>::co_reduce_max(T &result) const
 {
-  bool ok = reduce_max(result);
+  bool ok = this->reduce_max(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
   return ok;
 }
@@ -435,7 +435,7 @@ bool Grid3DHostCo<T>::co_reduce_max(T &result) const
 template<typename T>
 bool Grid3DHostCo<T>::co_reduce_min(T &result) const
 {
-  bool ok = reduce_min(result);
+  bool ok = this->reduce_min(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
   return ok;
 }
@@ -443,7 +443,7 @@ bool Grid3DHostCo<T>::co_reduce_min(T &result) const
 template<typename T>
 bool Grid3DHostCo<T>::co_reduce_checknan(T &result) const
 {
-  bool ok = reduce_checknan(result);
+  bool ok = this->reduce_checknan(result);
   result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
   return ok;
 }

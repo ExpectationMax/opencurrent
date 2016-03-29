@@ -40,7 +40,7 @@ void Sol_MultigridPressure3DDeviceCo<T>::apply_boundary_conditions(int level)
 
     // todo: can these proceed in parallel? does the order matter?
 
-    if (!invoke_kernel_enforce_bc(this->get_u(level), this->get_bc_at_level(level), this->hx(level), this->hy(level), this->hz(level))) {
+    if (!this->invoke_kernel_enforce_bc(this->get_u(level), this->get_bc_at_level(level), this->hx(level), this->hy(level), this->hz(level))) {
       printf("[ERROR] Sol_MultigridPressure3DDevice::apply_boundary_conditions - failed at level %d \n", level);
       this->add_error();
     }
@@ -55,7 +55,7 @@ void Sol_MultigridPressure3DDeviceCo<T>::apply_boundary_conditions(int level)
   }
   else if (ThreadManager::this_image() == 0) {
     // only do work on thread 0.  This is entirely local, so we can just call the base class.
-    if (!invoke_kernel_enforce_bc(this->get_u(level), this->get_bc_at_level(level), this->hx(level), this->hy(level), this->hz(level))) {
+    if (!this->invoke_kernel_enforce_bc(this->get_u(level), this->get_bc_at_level(level), this->hx(level), this->hy(level), this->hz(level))) {
       printf("[ERROR] Sol_MultigridPressure3DDevice::apply_boundary_conditions - failed at level %d \n", level);
       this->add_error();
     }
@@ -120,34 +120,34 @@ void Sol_MultigridPressure3DDeviceCo<T>::restrict_residuals(int fine_level, int 
   }
   else if (coarse_level <= _multi_thread_cutoff_level) {
 
-      check_ok(bind_tex_calculate_residual(this->get_u(fine_level), this->get_b(fine_level)));
-      check_ok(invoke_kernel_calculate_residual(this->get_u(fine_level), this->get_b(fine_level), this->get_r(fine_level), this->get_h(fine_level)));
-      check_ok(this->unbind_tex_calculate_residual());
+      this->check_ok(this->bind_tex_calculate_residual(this->get_u(fine_level), this->get_b(fine_level)));
+      this->check_ok(this->invoke_kernel_calculate_residual(this->get_u(fine_level), this->get_b(fine_level), this->get_r(fine_level), this->get_h(fine_level)));
+      this->check_ok(this->unbind_tex_calculate_residual());
 
       if (do_restrict ) {
 
         if (coarse_level == _multi_thread_cutoff_level) {
           // thread 0 restricts into _r_restrict, which was allocated specifically as restrict target at cutoff level.
-          check_ok(invoke_kernel_restrict(this->get_r(fine_level), _b_restrict));
+          this->check_ok(this->invoke_kernel_restrict(this->get_r(fine_level), _b_restrict));
 
         }
         else {
           // proceed as normal locally
-          check_ok(invoke_kernel_restrict(this->get_r(fine_level), this->get_b(coarse_level)));
+          this->check_ok(this->invoke_kernel_restrict(this->get_r(fine_level), this->get_b(coarse_level)));
         }
 
       }
 
       if (l2) {
         T residual_norm = 0;
-        check_ok(get_co_r(fine_level).co_reduce_sqrsum(residual_norm));
+        this->check_ok(get_co_r(fine_level).co_reduce_sqrsum(residual_norm));
         residual_norm /= (this->nx(fine_level) * this->ny(fine_level) * this->nz(fine_level) * num_active_images(fine_level));
         *l2 = sqrt(residual_norm);
       }
 
       if (linf) {
         T linf_norm = 0;
-        check_ok(get_co_r(fine_level).co_reduce_maxabs(linf_norm));
+        this->check_ok(get_co_r(fine_level).co_reduce_maxabs(linf_norm));
         *linf = (double)linf_norm;
       }
   }
@@ -181,10 +181,10 @@ void Sol_MultigridPressure3DDeviceCo<T>::prolong(int coarse_level, int fine_leve
     CoArrayManager::barrier_exchange(_scatter_u_hdl);
     CoArrayManager::barrier_exchange_fence();
 
-    check_ok(bind_tex_prolong(_u_prolong, this->get_u(fine_level)));
-    check_ok(invoke_kernel_prolong(_u_prolong, this->get_u(fine_level)));
+    this->check_ok(this->bind_tex_prolong(_u_prolong, this->get_u(fine_level)));
+    this->check_ok(this->invoke_kernel_prolong(_u_prolong, this->get_u(fine_level)));
 
-    check_ok(this->unbind_tex_prolong());
+    this->check_ok(this->unbind_tex_prolong());
 
     // this happens after the scatter
     apply_boundary_conditions(fine_level);

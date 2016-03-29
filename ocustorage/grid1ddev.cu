@@ -167,7 +167,7 @@ bool Grid1DDevice<T>::clear(T t)
   wrapper.PreKernel();  
   Grid1DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), t, this->nx(), this->gx());
   
-  return wrapper.PostKernelDim("Grid1DDevice_clear", Dg, Db);
+  return wrapper.PostKernel("Grid1DDevice_clear");
 }
 
 
@@ -193,16 +193,11 @@ Grid1DDevice<T>::copy_interior_data(const Grid1DHost<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_HTOD);
-  wrapper.PreKernel();
-
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_shifted_buffer, &from.at(0), sizeof(T) * this->nx(), cudaMemcpyHostToDevice)) {
     printf("[ERROR] Grid1DDevice::copy_interior_data - cudaMemcpy failed\n");
     return false;
   }
   
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->nx());
-
   return true;
 }
 
@@ -215,16 +210,11 @@ Grid1DDevice<T>::copy_all_data(const Grid1DHost<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_HTOD);
-  wrapper.PreKernel();
-
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->pnx(), cudaMemcpyHostToDevice)) {
     printf("[ERROR] Grid1DDevice::copy_all_data - cudaMemcpy failed\n");
     return false;
   }
-
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->pnx());
-
+  
   return true;
 }
 
@@ -238,14 +228,10 @@ Grid1DDevice<T>::copy_interior_data(const Grid1DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
-  wrapper.PreKernel();
-
   if ((unsigned int) CUDA_SUCCESS != cudaMemcpy(this->_shifted_buffer, &from.at(0), sizeof(T) * this->nx(), cudaMemcpyDeviceToDevice)) {
     printf("[ERROR] Grid1DDevice::copy_interior_data - cudaMemcpy failed\n");
     return false;
   }
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->nx());  
   
   return true;
 }
@@ -259,14 +245,11 @@ Grid1DDevice<T>::copy_all_data(const Grid1DDevice<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
-  wrapper.PreKernel();
-
   if (cudaMemcpy(this->_buffer, from.buffer(), sizeof(T) * this->pnx(), cudaMemcpyDeviceToDevice) != (unsigned int) CUDA_SUCCESS) {
     printf("[ERROR] Grid1DDevice::copy_all_data - cudaMemcpy failed\n");
     return false;
   }
-  wrapper.PostKernelBytes("cudaMemcpy", sizeof(T) * this->pnx());  
+  
   return true;
 }
 
@@ -284,7 +267,7 @@ bool Grid1DDevice<T>::linear_combination(T alpha1, const Grid1DDevice<T> &g1)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid1DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), alpha1, &g1.at(0), this->nx(), this->gx());
-  return wrapper.PostKernelDim("Grid1DDeviceF::linear_combination", Dg, Db);
+  return wrapper.PostKernel("Grid1DDeviceF::linear_combination");
 }
 
 template<typename T>
@@ -309,14 +292,14 @@ bool Grid1DDevice<T>::linear_combination(T alpha1, const Grid1DDevice<T> &g1, T 
 
   wrapper.PreKernel();
   Grid1DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0), alpha1, &g1.at(0), alpha2, &g2.at(0), this->nx(), this->gx());
-  return wrapper.PostKernelDim("Grid1DDeviceF::linear_combination", Dg, Db);
+  return wrapper.PostKernel("Grid1DDeviceF::linear_combination");
 }
 
 
 template<typename T>
 Grid1DDevice<T>::~Grid1DDevice()
 {
-  device_free(this->_buffer);
+  cudaFree(this->_buffer);
 }
 
 template<typename T>
@@ -337,9 +320,8 @@ bool Grid1DDevice<T>::init(int nx_val, int gx_val)
   if (this->_pnx & mask)
     this->_pnx = ((this->_pnx >> shift_amount) + 1) << shift_amount;
 
-  this->_buffer = (T*)device_malloc(sizeof(T) * this->_pnx);
-  if (this->_buffer == 0) {
-    printf("[ERROR] Grid1DDeviceF::init - device_malloc failed\n");
+  if ((unsigned int) CUDA_SUCCESS != cudaMalloc((void **)&this->_buffer, sizeof(T) * this->_pnx)) {
+    printf("[ERROR] Grid1DDeviceF::init - cudaMalloc failed\n");
     return false;
   }
   
@@ -406,7 +388,7 @@ bool Grid1DDeviceCo<double>::co_reduce_maxabs(double &result) const
 template<typename T>
 bool Grid1DDeviceCo<T>::co_reduce_sum(T &result) const
 {
-  bool ok = reduce_sum(result);
+  bool ok = this->reduce_sum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -414,7 +396,7 @@ bool Grid1DDeviceCo<T>::co_reduce_sum(T &result) const
 template<typename T>
 bool Grid1DDeviceCo<T>::co_reduce_sqrsum(T &result) const
 {
-  bool ok = reduce_sqrsum(result);
+  bool ok = this->reduce_sqrsum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -422,7 +404,7 @@ bool Grid1DDeviceCo<T>::co_reduce_sqrsum(T &result) const
 template<typename T>
 bool Grid1DDeviceCo<T>::co_reduce_max(T &result) const
 {
-  bool ok = reduce_max(result);
+  bool ok = this->reduce_max(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
   return ok;
 }
@@ -430,7 +412,7 @@ bool Grid1DDeviceCo<T>::co_reduce_max(T &result) const
 template<typename T>
 bool Grid1DDeviceCo<T>::co_reduce_min(T &result) const
 {
-  bool ok = reduce_min(result);
+  bool ok = this->reduce_min(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
   return ok;
 }
@@ -438,7 +420,7 @@ bool Grid1DDeviceCo<T>::co_reduce_min(T &result) const
 template<typename T>
 bool Grid1DDeviceCo<T>::co_reduce_checknan(T &result) const
 {
-  bool ok = reduce_checknan(result);
+  bool ok = this->reduce_checknan(result);
   result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
   return ok;
 }

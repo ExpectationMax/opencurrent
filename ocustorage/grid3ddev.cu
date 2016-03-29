@@ -192,7 +192,7 @@ bool Grid3DDevice<T>::clear(T val)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_clear<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), val, this->num_allocated_elements());
-  return wrapper.PostKernelDim("Grid3DDevice_clear", Dg, Db);
+  return wrapper.PostKernel("Grid3DDevice_clear");
 }
 
 
@@ -205,10 +205,10 @@ Grid3DDevice<T>::copy_all_data(const Grid3DHost<T> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_HTOD);
+  KernelWrapper wrapper;
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(T) * this->num_allocated_elements(), cudaMemcpyHostToDevice);
-  return wrapper.PostKernelBytes("cudaMemcpy(HostToDevice)", sizeof(T) * this->num_allocated_elements());
+  return wrapper.PostKernel("cudaMemcpy(HostToDevice)");
 }
 
 
@@ -229,7 +229,7 @@ Grid3DDevice<T>::copy_all_data(const Grid3DDevice<S> &from)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_copy_all_data<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), from.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernelDim("Grid3DDevice_copy_all_data", Dg, Db);
+  return wrapper.PostKernel("Grid3DDevice_copy_all_data");
 }
 
 template<>
@@ -242,10 +242,10 @@ Grid3DDevice<float>::copy_all_data(const Grid3DDevice<float> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
+  KernelWrapper wrapper;
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(float) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(float) * this->num_allocated_elements());
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<>
@@ -258,10 +258,10 @@ Grid3DDevice<int>::copy_all_data(const Grid3DDevice<int> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
+  KernelWrapper wrapper;
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(int) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(int) * this->num_allocated_elements());
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<>
@@ -274,10 +274,10 @@ Grid3DDevice<double>::copy_all_data(const Grid3DDevice<double> &from)
     return false;
   }
 
-  KernelWrapper wrapper(KernelWrapper::KT_DTOD);
+  KernelWrapper wrapper;
   wrapper.PreKernel();
   cudaMemcpy(this->buffer(), from.buffer(), sizeof(double) * this->num_allocated_elements(), cudaMemcpyDeviceToDevice);
-  return wrapper.PostKernelBytes("cudaMemcpy(DeviceToDevice)", sizeof(double) * this->num_allocated_elements());
+  return wrapper.PostKernel("cudaMemcpy(DeviceToDevice)");
 }
 
 template<typename T>
@@ -294,7 +294,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1)
   KernelWrapper wrapper;
   wrapper.PreKernel();
   Grid3DDevice_linear_combination1<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), this->num_allocated_elements());
-  return wrapper.PostKernelDim("Grid3DDevice_linear_combination", Dg, Db);
+  return wrapper.PostKernel("Grid3DDevice_linear_combination");
 }
 
 template<typename T>
@@ -333,7 +333,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
     Grid3DDevice_linear_combination2_3D<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(&this->at(0,0,0), alpha1, &g1.at(0,0,0), alpha2, &g2.at(0,0,0), 
       this->xstride(), this->ystride(), this->nx(), this->ny(), this->nz(), 
       blocksInY, 1.0f / (float)blocksInY);
-    return wrapper.PostKernelDim("Grid3DDevice_linear_combination2_3D", Dg, Db);
+    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
   }
   else {
     int block_size = 512;
@@ -343,7 +343,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
     KernelWrapper wrapper;
     wrapper.PreKernel();
     Grid3DDevice_linear_combination2<<<Dg, Db, 0, ThreadManager::get_compute_stream()>>>(this->buffer(), alpha1, g1.buffer(), alpha2, g2.buffer(), this->num_allocated_elements());
-    return wrapper.PostKernelDim("Grid3DDevice_linear_combination2_3D",Dg, Db);
+    return wrapper.PostKernel("Grid3DDevice_linear_combination2_3D");
   }
 
 }
@@ -352,7 +352,7 @@ bool Grid3DDevice<T>::linear_combination(T alpha1, const Grid3DDevice<T> &g1, T 
 template<typename T>
 Grid3DDevice<T>::~Grid3DDevice()
 {
-  device_free(this->_buffer);
+  cudaFree(this->_buffer);
 }
 
 template<typename T>
@@ -388,9 +388,8 @@ bool Grid3DDevice<T>::init(int nx_val, int ny_val, int nz_val, int gx_val, int g
   this->_pnzpny = this->_pnz * this->_pny;
   this->_allocated_elements = this->_pnzpny * this->_pnx + pre_padding;
 
-  this->_buffer = (T*)device_malloc(sizeof(T) * this->num_allocated_elements());
-  if (this->_buffer == 0) {
-    printf("[ERROR] Grid3DDeviceF::init - device_malloc failed\n");
+  if ((unsigned int)CUDA_SUCCESS != cudaMalloc((void **)&this->_buffer, sizeof(T) * this->num_allocated_elements())) {
+    printf("[ERROR] Grid3DDeviceF::init - cudaMalloc failed\n");
     return false;
   }
   
@@ -453,7 +452,7 @@ bool Grid3DDeviceCo<double>::co_reduce_maxabs(double &result) const
 template<typename T>
 bool Grid3DDeviceCo<T>::co_reduce_sum(T &result) const
 {
-  bool ok = reduce_sum(result);
+  bool ok = this->reduce_sum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -461,7 +460,7 @@ bool Grid3DDeviceCo<T>::co_reduce_sum(T &result) const
 template<typename T>
 bool Grid3DDeviceCo<T>::co_reduce_sqrsum(T &result) const
 {
-  bool ok = reduce_sqrsum(result);
+  bool ok = this->reduce_sqrsum(result);
   result = ThreadManager::barrier_reduce(result, HostReduceSum<T>()); 
   return ok;
 }
@@ -469,7 +468,7 @@ bool Grid3DDeviceCo<T>::co_reduce_sqrsum(T &result) const
 template<typename T>
 bool Grid3DDeviceCo<T>::co_reduce_max(T &result) const
 {
-  bool ok = reduce_max(result);
+  bool ok = this->reduce_max(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMax<T>()); 
   return ok;
 }
@@ -477,7 +476,7 @@ bool Grid3DDeviceCo<T>::co_reduce_max(T &result) const
 template<typename T>
 bool Grid3DDeviceCo<T>::co_reduce_min(T &result) const
 {
-  bool ok = reduce_min(result);
+  bool ok = this->reduce_min(result);
   result = ThreadManager::barrier_reduce(result, HostReduceMin<T>()); 
   return ok;
 }
@@ -485,7 +484,7 @@ bool Grid3DDeviceCo<T>::co_reduce_min(T &result) const
 template<typename T>
 bool Grid3DDeviceCo<T>::co_reduce_checknan(T &result) const
 {
-  bool ok = reduce_checknan(result);
+  bool ok = this->reduce_checknan(result);
   result = ThreadManager::barrier_reduce(result, HostReduceCheckNan<T>()); 
   return ok;
 }

@@ -29,7 +29,7 @@ template<typename T>
 bool Sol_ProjectDivergence3DDeviceStorage<T>::initialize_device_storage(
   int nx, int ny, int nz, double hx, double hy, double hz, Grid3DDevice<T> *u_val, Grid3DDevice<T> *v_val, Grid3DDevice<T> *w_val)
 {
-  if (!initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
+  if (!this->initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_device_storage - failed to initialize base storage\n");
     return false;
   }
@@ -61,11 +61,11 @@ bool Sol_ProjectDivergence3DDevice<T>::solve(double tolerance)
   this->clear_error();
   double residual = 0;
 
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
-  check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not calculate divergence");
-  check_ok(this->pressure_solver.solve(residual, tolerance, 15), "Sol_ProjectDivergence3DDevice::solve - could not solve for pressure\n");
-  check_ok(this->gradient_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not subtract gradient of pressure\n");
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions\n");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
+  this->check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not calculate divergence");
+  this->check_ok(this->pressure_solver.solve(residual, tolerance, 15), "Sol_ProjectDivergence3DDevice::solve - could not solve for pressure\n");
+  this->check_ok(this->gradient_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not subtract gradient of pressure\n");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions\n");
 
   return !this->any_error();
 }
@@ -75,8 +75,8 @@ bool Sol_ProjectDivergence3DDevice<T>::solve_divergence_only()
 {
   this->clear_error();
 
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
-  check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not calculate divergence");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
+  this->check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDevice::solve - could not calculate divergence");
 
   return !this->any_error();
 }
@@ -90,22 +90,22 @@ template<typename T>
 bool Sol_ProjectDivergence3DDevice<T>::initialize_storage(
   int nx, int ny, int nz, double hx, double hy, double hz, Grid3DDevice<T> *u_val, Grid3DDevice<T> *v_val, Grid3DDevice<T> *w_val)
 {
-  if (!initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
+  if (!this->initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_storage - failed to initialize base storage\n");
     return false;
   }
 
-  if (!initialize_device_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
+  if (!this->initialize_device_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_storage - failed to initialize device storage\n");
     return false;
   }
 
-  this->pressure_solver.bc.xneg = convert_bc_to_poisson_eqn(this->bc.xneg);
-  this->pressure_solver.bc.xpos = convert_bc_to_poisson_eqn(this->bc.xpos);
-  this->pressure_solver.bc.yneg = convert_bc_to_poisson_eqn(this->bc.yneg);
-  this->pressure_solver.bc.ypos = convert_bc_to_poisson_eqn(this->bc.ypos);
-  this->pressure_solver.bc.zneg = convert_bc_to_poisson_eqn(this->bc.zneg);
-  this->pressure_solver.bc.zpos = convert_bc_to_poisson_eqn(this->bc.zpos);
+  this->pressure_solver.bc.xneg = this->convert_bc_to_poisson_eqn(this->bc.xneg);
+  this->pressure_solver.bc.xpos = this->convert_bc_to_poisson_eqn(this->bc.xpos);
+  this->pressure_solver.bc.yneg = this->convert_bc_to_poisson_eqn(this->bc.yneg);
+  this->pressure_solver.bc.ypos = this->convert_bc_to_poisson_eqn(this->bc.ypos);
+  this->pressure_solver.bc.zneg = this->convert_bc_to_poisson_eqn(this->bc.zneg);
+  this->pressure_solver.bc.zpos = this->convert_bc_to_poisson_eqn(this->bc.zpos);
 
   if (!divergence_solver.initialize_storage(nx, ny, nz, hx, hy, hz, this->u, this->v, this->w, &this->divergence)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_storage - failed to initialize divergence_solver\n");
@@ -166,12 +166,12 @@ bool Sol_ProjectDivergence3DDeviceCo<T>::initialize_storage(
   int tid = ThreadManager::this_image();
   int num_images = ThreadManager::num_images();
 
-  if (!initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
+  if (!this->initialize_base_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_storage - failed to initialize base storage\n");
     return false;
   }
 
-  if (!initialize_device_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
+  if (!this->initialize_device_storage(nx,ny,nz,hx,hy,hz,u_val, v_val, w_val)) {
     printf("[ERROR] Sol_ProjectDivergence3DDevice::initialize_storage - failed to initialize device storage\n");
     return false;
   }
@@ -199,12 +199,12 @@ bool Sol_ProjectDivergence3DDeviceCo<T>::initialize_storage(
     local_bc.xpos.type = BC_NONE;
 
   // pressure solver gets the non-local bc's, since it will figure out its own local bc's
-  this->pressure_solver.bc.xneg = convert_bc_to_poisson_eqn(this->bc.xneg);
-  this->pressure_solver.bc.xpos = convert_bc_to_poisson_eqn(this->bc.xpos);
-  this->pressure_solver.bc.yneg = convert_bc_to_poisson_eqn(this->bc.yneg);
-  this->pressure_solver.bc.ypos = convert_bc_to_poisson_eqn(this->bc.ypos);
-  this->pressure_solver.bc.zneg = convert_bc_to_poisson_eqn(this->bc.zneg);
-  this->pressure_solver.bc.zpos = convert_bc_to_poisson_eqn(this->bc.zpos);
+  this->pressure_solver.bc.xneg = this->convert_bc_to_poisson_eqn(this->bc.xneg);
+  this->pressure_solver.bc.xpos = this->convert_bc_to_poisson_eqn(this->bc.xpos);
+  this->pressure_solver.bc.yneg = this->convert_bc_to_poisson_eqn(this->bc.yneg);
+  this->pressure_solver.bc.ypos = this->convert_bc_to_poisson_eqn(this->bc.ypos);
+  this->pressure_solver.bc.zneg = this->convert_bc_to_poisson_eqn(this->bc.zneg);
+  this->pressure_solver.bc.zpos = this->convert_bc_to_poisson_eqn(this->bc.zpos);
 
   if (posx_image != -1) {
     Region3D uto   = co_u                ->region(this->_nx, this->_nx+1)()();
@@ -303,17 +303,17 @@ bool Sol_ProjectDivergence3DDeviceCo<T>::solve(double tolerance)
   CoArrayManager::barrier_exchange(_u_posx_hdl);
   CoArrayManager::barrier_exchange(_v_posx_hdl);
   CoArrayManager::barrier_exchange(_w_posx_hdl);
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDevice::solve - could not enforce boundary conditions");
 
   ThreadManager::io_fence();
   ThreadManager::barrier();
 
-  check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not calculate divergence");
-  check_ok(this->pressure_solver.solve(residual, tolerance, 15), "Sol_ProjectDivergence3DDeviceCo::solve - could not solve for pressure\n");
+  this->check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not calculate divergence");
+  this->check_ok(this->pressure_solver.solve(residual, tolerance, 15), "Sol_ProjectDivergence3DDeviceCo::solve - could not solve for pressure\n");
 
   // NB: we do not need to exchange pressure ghost cells, since we are guaranteed that the pressure 
   // solver finishes with ghost cells valid and up-to-date.
-  check_ok(this->gradient_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not subtract gradient of pressure\n");
+  this->check_ok(this->gradient_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not subtract gradient of pressure\n");
 
   CoArrayManager::barrier_exchange(_u_negx_hdl);
   CoArrayManager::barrier_exchange(_v_negx_hdl);
@@ -321,7 +321,7 @@ bool Sol_ProjectDivergence3DDeviceCo<T>::solve(double tolerance)
   CoArrayManager::barrier_exchange(_u_posx_hdl);
   CoArrayManager::barrier_exchange(_v_posx_hdl);
   CoArrayManager::barrier_exchange(_w_posx_hdl);
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDeviceCo::solve - could not enforce boundary conditions\n");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDeviceCo::solve - could not enforce boundary conditions\n");
 
   ThreadManager::io_fence();
   ThreadManager::barrier();
@@ -334,8 +334,8 @@ bool Sol_ProjectDivergence3DDeviceCo<T>::solve_divergence_only()
 {
   this->clear_error();
 
-  check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDeviceCo::solve - could not enforce boundary conditions");
-  check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not calculate divergence");
+  this->check_ok(apply_3d_mac_boundary_conditions_level1( *this->u, *this->v, *this->w,  this->local_bc, this->_hx, this->_hy, this->_hz), "Sol_ProjectDivergence3DDeviceCo::solve - could not enforce boundary conditions");
+  this->check_ok(this->divergence_solver.solve(), "Sol_ProjectDivergence3DDeviceCo::solve - could not calculate divergence");
 
   return !this->any_error();
 }

@@ -29,15 +29,29 @@ ENABLE_TESTING()
 #
 # make VERBOSE=1
 
+CMAKE_POLICY(SET CMP0054 OLD)
 SET(CMAKE_VERBOSE_MAKEFILE OFF)
 
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/cmake_modules/")
 INCLUDE(${CMAKE_SOURCE_DIR}/System.cmake)
-INCLUDE(${CMAKE_SOURCE_DIR}/CMake/cuda/FindCUDA.cmake)
+# INCLUDE(${CMAKE_SOURCE_DIR}/CMake/cuda/FindCUDA.cmake)
+FIND_PACKAGE(CUDA REQUIRED)
+
 
 # Clear default flags, they are bad
 SET(CMAKE_CXX_FLAGS "")
 SET(CMAKE_C_FLAGS "")
+
+IF(APPLE)
+  # on Mavericks, need to link to libstdc++ directly because libc++ is default
+  # and won't work
+  if(NOT ${CMAKE_SYSTEM_VERSION} VERSION_LESS 13.0)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lstdc++")
+    set(EXTRA_LINK_LIBRARIES stdc++)
+  endif()
+ENDIF()
+
 
 IF (OCU_OMP_ENABLED)
   FIND_PACKAGE(OpenMP)

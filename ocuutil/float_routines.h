@@ -34,11 +34,19 @@ OCU_HOSTDEVICE
 inline bool check_float(float f) 
 {
 #ifdef __CUDACC__
+#ifdef __APPLE__
+  return __isfinite(f);
+#else
   return __finite(f);
+#endif
 #elif defined(_WIN32)
   return !!_finite(f);
 #else
+#ifdef __APPLE__
+  return std::isfinite(f);
+#else
   return finite(f);
+#endif
 #endif
 }
 

@@ -46,10 +46,10 @@ template<typename T>
 bool 
 Grid2DHost<T>::copy_interior_data(const Grid2DHost<T> &from)
 {
-  if (check_layout_match(from))
+  if (this->check_layout_match(from))
     return copy_all_data(from);
 
-  if (!check_interior_dimension_match(from)) {
+  if (!this->check_interior_dimension_match(from)) {
     printf("[ERROR] Grid2DHost::copy_interior_data - mismatch: (%d, %d) != (%d, %d)\n", this->nx(), this->ny(), from.nx(), from.ny());
     return false;
   }
@@ -65,7 +65,7 @@ template<typename T>
 bool 
 Grid2DHost<T>::copy_all_data(const Grid2DHost<T> &from)
 {
-  if (!check_layout_match(from)) {
+  if (!this->check_layout_match(from)) {
     printf("[ERROR] Grid2DHost::copy_interior_data - mismatch: (%d, %d) != (%d, %d)\n", this->pnx(), this->pny(), from.pnx(), from.pny());
     return false;
   }
@@ -79,7 +79,7 @@ template<typename T>
 bool 
 Grid2DHost<T>::linear_combination(T alpha1, const Grid2DHost<T> &g1)
 {
-  if (check_layout_match(g1)) {
+  if (this->check_layout_match(g1)) {
 
     // fast version if all dimensions match
     T *this_ptr = &this->at(0,0);
@@ -91,7 +91,7 @@ Grid2DHost<T>::linear_combination(T alpha1, const Grid2DHost<T> &g1)
       ++g1_ptr;
     }
   }
-  else if (check_interior_dimension_match(g1)) {
+  else if (this->check_interior_dimension_match(g1)) {
     
     // slow version if not all dimensions match
     for (int i=0; i < this->nx(); i++) {
@@ -118,7 +118,7 @@ template<typename T>
 bool 
 Grid2DHost<T>::linear_combination(T alpha1, const Grid2DHost<T> &g1, T alpha2, const Grid2DHost<T> &g2)
 {
-  if (check_layout_match(g1) && check_layout_match(g2)) {
+  if (this->check_layout_match(g1) && this->check_layout_match(g2)) {
 
     // fast version if all dimensions match
     T *this_ptr = &this->at(0,0);
@@ -132,7 +132,7 @@ Grid2DHost<T>::linear_combination(T alpha1, const Grid2DHost<T> &g1, T alpha2, c
       ++g2_ptr;
     }
   }
-  else if (check_interior_dimension_match(g1) && check_interior_dimension_match(g2)) {
+  else if (this->check_interior_dimension_match(g1) && this->check_interior_dimension_match(g2)) {
     
     // slow version if not all dimensions match
     for (int i=0; i < this->nx(); i++) {

@@ -232,16 +232,16 @@ bool Eqn_Diffusion3DCo<T>::advance_one_step(double dt)
   // make sure previous step finished
   ThreadManager::compute_fence();
 
-  check_ok(CoArrayManager::barrier_exchange(this->_negx_handle));
-  check_ok(CoArrayManager::barrier_exchange(this->_posx_handle));
+  this->check_ok(CoArrayManager::barrier_exchange(this->_negx_handle));
+  this->check_ok(CoArrayManager::barrier_exchange(this->_posx_handle));
 
-  check_ok(apply_3d_boundary_conditions_level1_nocorners(_density, _local_bc, this->_hx, this->_hy, this->_hz));
-  check_ok(_deriv_densitydt.clear_zero());
+  this->check_ok(apply_3d_boundary_conditions_level1_nocorners(_density, _local_bc, this->_hx, this->_hy, this->_hz));
+  this->check_ok(_deriv_densitydt.clear_zero());
 
   ThreadManager::io_fence();
 
-  check_ok(_diffusion_solver.solve());
-  check_ok(_density.linear_combination((T)1.0, _density, (T)dt, _deriv_densitydt));
+  this->check_ok(_diffusion_solver.solve());
+  this->check_ok(_density.linear_combination((T)1.0, _density, (T)dt, _deriv_densitydt));
 
   return !this->any_error();
 }

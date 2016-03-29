@@ -149,7 +149,7 @@ Eqn_IncompressibleNS3D<T>::add_thermal_force()
     _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
-  if (!wrapper.PostKernelDim("Eqn_IncompressibleNS3D_add_thermal_force", Dg, Db))
+  if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
     this->add_error();
 
 }
@@ -165,7 +165,7 @@ template<typename T>
 bool 
 Eqn_IncompressibleNS3D<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T> &params)
 {
-  if (!set_base_parameters(params)) {
+  if (!this->set_base_parameters(params)) {
     printf("[ERROR] Eqn_IncompressibleNS3D::set_parameters - failed on base parameters\n");
     return false;
   }
@@ -335,52 +335,52 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
   this->num_steps++;
 
   // update dudt
-  check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
+  this->check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
 
   if (viscosity_coefficient() > 0) {
-    check_ok(_u_diffusion.solve()); // dudt += \nu \nabla^2 u
-    check_ok(_v_diffusion.solve()); // dvdt += \nu \nabla^2 v
-    check_ok(_w_diffusion.solve()); // dwdt += \nu \nabla^2 w
+    this->check_ok(_u_diffusion.solve()); // dudt += \nu \nabla^2 u
+    this->check_ok(_v_diffusion.solve()); // dvdt += \nu \nabla^2 v
+    this->check_ok(_w_diffusion.solve()); // dwdt += \nu \nabla^2 w
   }
 
   // eventually this will be replaced with a grid-wide operation.
   add_thermal_force();
 
   // update dTdt
-  check_ok(_thermal_solver.solve());   // updates dTdt, overwrites whatever is there
+  this->check_ok(_thermal_solver.solve());   // updates dTdt, overwrites whatever is there
   if (thermal_diffusion_coefficient() > 0) {
-    check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
+    this->check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
   }
 
   T ab_coeff = -dt*dt / (2 * this->_lastdt);
 
   // advance T 
   if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
   } 
   else {
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)dt, _deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)dt, _deriv_tempdt));
   }
 
-  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_thermalbc, this->_hx, this->_hy, this->_hz));
+  this->check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_thermalbc, this->_hx, this->_hy, this->_hz));
 
   // advance u,v,w
   if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
-    check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
-    check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
 
-    check_ok(_v.linear_combination((T)1.0, _v, (T)(dt - ab_coeff), _deriv_vdt));
-    check_ok(_v.linear_combination((T)1.0, _v, (T)ab_coeff, _last_deriv_vdt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)(dt - ab_coeff), _deriv_vdt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)ab_coeff, _last_deriv_vdt));
 
-    check_ok(_w.linear_combination((T)1.0, _w, (T)(dt - ab_coeff), _deriv_wdt));
-    check_ok(_w.linear_combination((T)1.0, _w, (T)ab_coeff, _last_deriv_wdt));
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)(dt - ab_coeff), _deriv_wdt));
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)ab_coeff, _last_deriv_wdt));
 
   }
   else {
-    check_ok(_u.linear_combination((T)1.0, _u, (T)dt, _deriv_udt));
-    check_ok(_v.linear_combination((T)1.0, _v, (T)dt, _deriv_vdt)); 
-    check_ok(_w.linear_combination((T)1.0, _w, (T)dt, _deriv_wdt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)dt, _deriv_udt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)dt, _deriv_vdt)); 
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)dt, _deriv_wdt));
   }
 
   // copy state for AB2
@@ -393,7 +393,7 @@ bool Eqn_IncompressibleNS3D<T>::advance_one_step(double dt)
   }
 
   // enforce incompressibility - this enforces bc's before and after projection
-  check_ok(_projection_solver.solve(this->_max_divergence));
+  this->check_ok(_projection_solver.solve(this->_max_divergence));
 
   return !this->any_error();
 }
@@ -467,7 +467,7 @@ Eqn_IncompressibleNS3DCo<T>::set_parameters(const Eqn_IncompressibleNS3DParams<T
   int tid = ThreadManager::this_image();
   int num_images = ThreadManager::num_images();
 
-  if (!set_base_parameters(params)) {
+  if (!this->set_base_parameters(params)) {
     printf("[ERROR] Eqn_IncompressibleNS3DCo::set_parameters - failed on base parameters\n");
     return false;
   }
@@ -765,7 +765,7 @@ Eqn_IncompressibleNS3DCo<T>::add_thermal_force()
     _temp.xstride(), _temp.ystride(), _temp.stride(this->_vertical_direction), this->nx(), this->ny(), this->nz(), 
     blocksInY, 1.0f / (float)blocksInY);
 
-  if (!wrapper.PostKernelDim("Eqn_IncompressibleNS3D_add_thermal_force", Dg, Db))
+  if (!wrapper.PostKernel("Eqn_IncompressibleNS3D_add_thermal_force"))
     this->add_error();
 
 }
@@ -777,12 +777,12 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
   this->num_steps++;
 
   // update dudt
-  check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
+  this->check_ok(_advection_solver.solve()); // updates dudt, dvdt, dwdt, overwrites whatever is there
 
   if (viscosity_coefficient() > 0) {
-    check_ok(_u_diffusion.solve()); // dudt += \nu \nabla^2 u
-    check_ok(_v_diffusion.solve()); // dvdt += \nu \nabla^2 v
-    check_ok(_w_diffusion.solve()); // dwdt += \nu \nabla^2 w
+    this->check_ok(_u_diffusion.solve()); // dudt += \nu \nabla^2 u
+    this->check_ok(_v_diffusion.solve()); // dvdt += \nu \nabla^2 v
+    this->check_ok(_w_diffusion.solve()); // dwdt += \nu \nabla^2 w
   }
 
   // eventually this will be replaced with a grid-wide operation.
@@ -790,41 +790,41 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
 
   // update dTdt
 
-  check_ok(_thermal_solver.solve());   // updates dTdt, overwrites whatever is there
+  this->check_ok(_thermal_solver.solve());   // updates dTdt, overwrites whatever is there
   if (thermal_diffusion_coefficient() > 0) {
-    check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
+    this->check_ok(_thermal_diffusion.solve()); // dTdt += k \nabla^2 T
   }
 
   T ab_coeff = -dt*dt / (2 * this->_lastdt);
 
   // advance T 
   if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)(dt - ab_coeff), _deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)ab_coeff, _last_deriv_tempdt));
   } 
   else {
-    check_ok(_temp.linear_combination((T)1.0, _temp, (T)dt, _deriv_tempdt));
+    this->check_ok(_temp.linear_combination((T)1.0, _temp, (T)dt, _deriv_tempdt));
   }
 
   do_halo_exchange_t();
-  check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_local_thermalbc, this->_hx, this->_hy, this->_hz));
+  this->check_ok(apply_3d_boundary_conditions_level1_nocorners(_temp, this->_local_thermalbc, this->_hx, this->_hy, this->_hz));
 
   // advance u,v,w
   if (this->_time_step == TS_ADAMS_BASHFORD2 && this->_lastdt > 0) {
-    check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
-    check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)(dt - ab_coeff), _deriv_udt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)ab_coeff, _last_deriv_udt));
 
-    check_ok(_v.linear_combination((T)1.0, _v, (T)(dt - ab_coeff), _deriv_vdt));
-    check_ok(_v.linear_combination((T)1.0, _v, (T)ab_coeff, _last_deriv_vdt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)(dt - ab_coeff), _deriv_vdt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)ab_coeff, _last_deriv_vdt));
 
-    check_ok(_w.linear_combination((T)1.0, _w, (T)(dt - ab_coeff), _deriv_wdt));
-    check_ok(_w.linear_combination((T)1.0, _w, (T)ab_coeff, _last_deriv_wdt));
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)(dt - ab_coeff), _deriv_wdt));
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)ab_coeff, _last_deriv_wdt));
 
   }
   else {
-    check_ok(_u.linear_combination((T)1.0, _u, (T)dt, _deriv_udt));
-    check_ok(_v.linear_combination((T)1.0, _v, (T)dt, _deriv_vdt)); 
-    check_ok(_w.linear_combination((T)1.0, _w, (T)dt, _deriv_wdt));
+    this->check_ok(_u.linear_combination((T)1.0, _u, (T)dt, _deriv_udt));
+    this->check_ok(_v.linear_combination((T)1.0, _v, (T)dt, _deriv_vdt)); 
+    this->check_ok(_w.linear_combination((T)1.0, _w, (T)dt, _deriv_wdt));
   }
 
   // copy state for AB2
@@ -837,7 +837,7 @@ bool Eqn_IncompressibleNS3DCo<T>::advance_one_step(double dt)
   }
 
   // enforce incompressibility - this enforces bc's before and after projection
-  check_ok(_projection_solver.solve(this->_max_divergence));
+  this->check_ok(_projection_solver.solve(this->_max_divergence));
 
   return !this->any_error();
 }
